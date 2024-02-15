@@ -13,12 +13,12 @@
 
 # 1) Installation. -----------------------------------------------------------
 
-# The CRAN version:
-install.packages("rGEDI")
-
-# The development version:
-library(devtools)
-devtools::install_git("https://github.com/carlos-alberto-silva/rGEDI", dependencies = TRUE)
+# # The CRAN version:
+# install.packages("rGEDI")
+# 
+# # The development version:
+# library(devtools)
+# devtools::install_git("https://github.com/carlos-alberto-silva/rGEDI", dependencies = TRUE)
 
 # Loading rGEDI package
 library(rGEDI)
