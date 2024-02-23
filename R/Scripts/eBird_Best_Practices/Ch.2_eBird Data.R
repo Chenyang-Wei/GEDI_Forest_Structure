@@ -1,3 +1,4 @@
+## "Best Practices for Using eBird Data"
 ## Source: https://ebird.github.io/ebird-best-practices/ebird.html
 ## Last updated: 2/20/2024.
 
@@ -96,6 +97,13 @@ write_sf(ne_country_lines, gpkg_file, "ne_country_lines")
 write_sf(ne_state_lines, gpkg_file, "ne_state_lines")
 
 
+# 1.5 Session info --------------------------------------------------------
+
+# List the versions of all R packages.
+devtools::session_info()
+
+
+
 ###### Chapter 2: eBird Data ######
 
 # 2.4 Importing eBird data into R -----------------------------------------
@@ -108,17 +116,23 @@ library(lubridate)
 library(readr)
 library(sf)
 
+setwd("C:/Research_Projects/Bird/eBird")
+
 # Read the checklist data (i.e., Sampling Event Data (SED)).
-f_sed <- file.path("Data",
-                   "ebd_US-GA_woothr_smp_relAug-2023",
-                   "ebd_US-GA_woothr_smp_relAug-2023_sampling.txt")
+f_sed <- file.path("data",
+                   "Mountain-Bluebird_CA",
+                   "ebd_US-CA_moublu_smp_relJan-2024_sampling.txt")
+
 checklists <- read_sampling(f_sed)
-glimpse(checklists)
+
+glimpse(checklists) # More info: eBird_Basic_Dataset_Metadata_v1.15.pdf
 
 # Make a histogram of the distribution of distance traveling 
 #   for traveling protocol checklists.
-checklists_Traveling <- checklists %>% 
+checklists_Traveling <- 
+  checklists |> 
   filter(protocol_type == "Traveling")
+
 ggplot(checklists_Traveling) +
   aes(x = effort_distance_km) +
   geom_histogram(
@@ -131,43 +145,49 @@ ggplot(checklists_Traveling) +
     labels = scales::label_percent()) +
   labs(
     x = "Distance traveled [km]",
-    y = "% of eBird checklists",
+    y = "Percentage of eBird checklists",
     title = "Distribution of distance traveled on eBird checklists"
   )
 
 # Make a histogram of the distribution of observation date.
-checklists_ObservationDate <- checklists %>% 
+checklists_ObservationDate <- 
+  checklists|> 
   select(observation_date, protocol_type)
+
 checklists_ObservationDate$observation_Year <- 
-  checklists_ObservationDate$observation_date %>% 
-  substring(1, 4) %>% 
+  checklists_ObservationDate$observation_date|> 
+  substring(1, 4)|> 
   as.numeric()
-ggplot(checklists_ObservationDate) +
+
+checklists_ObservationDate |> 
+  ggplot() +
   aes(x = observation_Year) +
   geom_histogram(
-    aes(y = after_stat(count / sum(count)),
-        fill = protocol_type),
-    binwidth = 1,
+    aes(y = after_stat(count / sum(count))),
+    binwidth = 2, 
+    fill = "darkblue", 
     color = "white") +
   scale_y_continuous(
     limits = c(0, NA),
     labels = scales::label_percent()) +
-  scale_fill_discrete(name = "Protocol type") +
   labs(
     x = "Observation year",
-    y = "% of eBird checklists",
+    y = "Percentage of eBird checklists",
     title = "Observation year of eBird checklists"
   )
 
-# Import the observation data (i.e., eBird Basic Dataset (EBD)).
-f_ebd <- file.path("Data",
-                   "ebd_US-GA_woothr_smp_relAug-2023",
-                   "ebd_US-GA_woothr_smp_relAug-2023.txt")
+# Import the observation data/eBird Basic Dataset (EBD).
+f_ebd <- file.path("data",
+                   "Mountain-Bluebird_CA",
+                   "ebd_US-CA_moublu_smp_relJan-2024.txt")
+
 observations <- read_ebd(f_ebd)
-# By default:
+
+# By default when a "read" function is used:
 # 1) Variable name and type cleanup.
 # 2) Collapsing shared checklist.
-# 3) Taxonomic rollup.
+# 3) Taxonomic roll-up.
+
 glimpse(observations)
 
 
