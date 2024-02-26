@@ -183,15 +183,15 @@ f_ebd <- file.path("data",
 
 observations <- read_ebd(f_ebd)
 
-# By default when a "read" function is used:
-# 1) Variable name and type cleanup.
-# 2) Collapsing shared checklist.
-# 3) Taxonomic roll-up.
+# By default when a "read" function from "auk" is used:
+#   1) Variable name and type cleanup.
+#   2) Collapsing shared checklist.
+#   3) Taxonomic rollup.
 
 glimpse(observations)
 
 
-## 2.4.1 Shared checklists.
+## 2.4.1 Shared checklists
 
 # Checklists with the same group_identifier 
 #   provide duplicate information on the same birding event 
@@ -201,19 +201,19 @@ checklists_shared <- read_sampling(f_sed, unique = FALSE)
 # Identify shared checklists.
 checklists_shared |> 
   filter(!is.na(group_identifier)) |> 
-  select(sampling_event_identifier, group_identifier) |> 
   arrange(group_identifier) |> 
+  select(group_identifier, sampling_event_identifier) |> 
   print(n = 15)
-# You can view a checklist on the eBird website 
-#   by appending the sampling_event_identifier to 
+# You can inspect a checklist on the eBird website 
+#   by appending the "sampling_event_identifier" to 
 #   the URL https://ebird.org/checklist/.
 
 # Collapse the shared checklists.
 checklists_unique <- auk_unique(
   checklists_shared, 
   checklists_only = TRUE)
-nrow(checklists_shared)
-nrow(checklists_unique)
+nrow(checklists_shared) # 6964386.
+nrow(checklists_unique) # 5786275.
 
 # Check the newly created "checklist_id" variable.
 head(checklists_unique) # S*: non-shared.
@@ -222,14 +222,14 @@ tail(checklists_unique) # G*: shared.
 # Check the checklists and observers contributing to
 #   a shared checklist.
 checklists_unique |> 
-  filter(checklist_id == "G7637089") |> 
+  filter(checklist_id == "G7641022") |> 
   select(checklist_id, 
          group_identifier, 
          sampling_event_identifier, 
          observer_id)
 
 
-## Taxonomic rollup.
+## 2.4.1 Taxonomic rollup
 
 # Import one of the auk example datasets without rolling up taxonomy.
 obs_ex <- 
@@ -243,7 +243,7 @@ obs_ex_rollup <- auk_rollup(obs_ex)
 unique(obs_ex$category)
 unique(obs_ex_rollup$category)
 
-# Without rollup, there are three observations.
+# Without rollup, there are four observations.
 obs_ex |>
   filter(common_name == "Yellow-rumped Warbler") |> 
   select(checklist_id, 
@@ -264,41 +264,62 @@ obs_ex_rollup |>
 # 2.5 Filtering to study region and season --------------------------------
 
 # Filter the checklist data.
-#   Choose observations from June for the last 10 years (2014-2023).
-checklists |> 
-  select(all_species_reported) |> 
-  print()
-checklists <- checklists %>% 
+checklists <- checklists |> 
   filter(all_species_reported, # Keep complete checklists.
-         protocol_type %in% c("Stationary", "Traveling"),
-         year(observation_date) >= 2014, year(observation_date) <= 2023, 
-         month(observation_date) == 6)
+         between(year(observation_date), 2019, 2022),
+         between(month(observation_date), 6, 8))
+
+# Check the result.
+checklists |> 
+  arrange(observation_date) |> 
+  select(observation_date, all_species_reported) |> 
+  first()
+
+checklists |> 
+  arrange(observation_date) |> 
+  select(observation_date, all_species_reported) |> 
+  last()
 
 # Filter the observation data.
-observations |> 
-  select(all_species_reported) |> 
-  print()
-observations <- observations %>% 
+observations <- observations |> 
   filter(all_species_reported, # Keep complete checklists.
-         protocol_type %in% c("Stationary", "Traveling"),
-         year(observation_date) >= 2014, year(observation_date) <= 2023, 
-         month(observation_date) == 6)
+         between(year(observation_date), 2019, 2022),
+         between(month(observation_date), 6, 8))
+
+# Check the result.
+observations |> 
+  arrange(observation_date) |> 
+  select(observation_date, all_species_reported) |> 
+  first()
+
+observations |> 
+  arrange(observation_date) |> 
+  select(observation_date, all_species_reported) |> 
+  last()
 
 # Convert checklist locations to point features.
 checklists_sf <- checklists |> 
   select(checklist_id, latitude, longitude) |> 
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
-# Boundary of the study region, buffered by 1 km.
-study_region_buffered <- read_sf("Data/gis-data.gpkg", layer = "ne_states") |>
-  filter(state_code == "US-GA") |>
+head(checklists_sf)
+nrow(checklists_sf)
+
+# Boundary of the study region (California), buffered by 1 km.
+study_region_buffered <- 
+  read_sf("data/gis-data.gpkg", layer = "ne_states") |>
+  filter(state_code == "US-CA") |>
   st_transform(crs = st_crs(checklists_sf)) |>
   st_buffer(dist = 1000)
+
+plot(study_region_buffered)
 
 # Spatially subset the checklists to those in the study region.
 in_region <- checklists_sf[study_region_buffered, ]
 
-# Join to checklists and observations to remove checklists outside region.
+nrow(in_region)
+
+# Remove checklists outside region.
 checklists <- semi_join(checklists, in_region, by = "checklist_id")
 observations <- semi_join(observations, in_region, by = "checklist_id")
 
@@ -309,11 +330,12 @@ observations <- semi_join(observations, checklists, by = "checklist_id")
 # 2.6 Zero-filling --------------------------------------------------------
 
 # Zero-filling:
-#   If there is a record in the SED but no record for a species in the EBD, 
+#   For a species, if there is a record in the SED but no record in the EBD, 
 #   then a count of zero individuals of that species can be inferred.
 zf <- auk_zerofill(observations, checklists, collapse = TRUE)
+# Combine the EBD and SED datasets into a single data frame.
 
-# Function to convert time observation to hours since midnight.
+# Function to convert the observation time to hours since midnight.
 time_to_decimal <- function(x) {
   x <- hms(x, quiet = TRUE)
   hour(x) + minute(x) / 60 + second(x) / 3600
@@ -323,18 +345,19 @@ time_to_decimal <- function(x) {
 zf <- zf |> 
   mutate(
     # Convert count to integer and X to NA
-    #   ignore the warning "NAs introduced by coercion"
+    #   ignore the warning "NAs introduced by coercion".
     observation_count = as.integer(observation_count),
-    # effort_distance_km to 0 for stationary counts.
+    # Convert effort_distance_km to 0 for stationary counts.
     effort_distance_km = if_else(protocol_type == "Stationary", 
-                                 0, effort_distance_km),
+                                 0, 
+                                 effort_distance_km),
     # Convert duration to hours.
     effort_hours = duration_minutes / 60,
-    # Speed km/h.
+    # Calculate speed in km/h.
     effort_speed_kmph = effort_distance_km / effort_hours,
-    # Convert time to decimal hours since midnight.
+    # Convert the observation time to decimal hours since midnight.
     hours_of_day = time_to_decimal(time_observations_started),
-    # Split date into year and day of year.
+    # Split the observation date into year and day of year.
     year = year(observation_date),
     day_of_year = yday(observation_date)
   )
@@ -342,14 +365,20 @@ zf <- zf |>
 
 # 2.7 Accounting for variation in effort ----------------------------------
 
-# Additional filtering for weekly temporal resolution 
-#   and 3-km spatial resolution.
+# Restrict checklists to "traveling" or "stationary" 
+#   counts less than 6 hours in duration and 10 km in length, 
+#   at speeds below 100km/h, and with 10 or fewer observers.
 zf_filtered <- zf |> 
   filter(protocol_type %in% c("Stationary", "Traveling"),
          effort_hours <= 6,
          effort_distance_km <= 10,
          effort_speed_kmph <= 100,
          number_observers <= 10)
+# 10-km traveling checklists: 
+#   94% are contained within a 1.5 km radius circle,
+#   74% have location error less than 500 m.
+# For making predictions at weekly temporal resolution and 
+#   3-km spatial resolution.
 
 # Check the remaining variations.
 ggplot(zf_filtered) +
@@ -373,7 +402,7 @@ ggplot(zf_filtered) +
   geom_histogram(
     aes(y = after_stat(count / sum(count))),
     binwidth = 0.25, 
-    fill = "darkgreen", 
+    fill = "darkblue", 
     color = "white") +
   scale_y_continuous(
     limits = c(0, NA),
@@ -384,24 +413,52 @@ ggplot(zf_filtered) +
     title = "Distribution of eBird checklist distance"
   )
 
+ggplot(zf_filtered) +
+  aes(x = effort_speed_kmph) +
+  geom_histogram(
+    aes(y = after_stat(count / sum(count))),
+    binwidth = 2, 
+    fill = "orange", 
+    color = "white") +
+  scale_y_continuous(
+    limits = c(0, NA),
+    labels = scales::label_percent()) +
+  labs(
+    x = "Speed [km/h]",
+    y = "% of eBird checklists",
+    title = "Distribution of eBird checklist speed"
+  )
 
-## 2.7.1 Spatial precision.
+ggplot(zf_filtered) +
+  aes(x = number_observers) +
+  geom_histogram(
+    aes(y = after_stat(count / sum(count))),
+    binwidth = 1, 
+    fill = "purple", 
+    color = "white") +
+  scale_y_continuous(
+    limits = c(0, NA),
+    labels = scales::label_percent()) +
+  labs(
+    x = "# of observers",
+    y = "% of eBird checklists",
+    title = "Distribution of eBird checklist observer #"
+  )
 
 
-
-# 2.6 Test-train split ----------------------------------------------------
+# 2.8 Test-train split ----------------------------------------------------
 
 # Randomly split the data into 80% of checklists for training 
-# and 20% for testing.
-zf_split <- zf_filtered %>% 
-  mutate(type = if_else(runif(nrow(.)) <= 0.8, 
-                        "train", "test"))
+#   and 20% for testing.
+zf_filtered$type <- if_else(
+  runif(nrow(zf_filtered)) <= 0.8, 
+  "train", "test")
 
-# confirm the proportion in each set is correct
-table(zf_split$type) / nrow(zf_split)
+# Confirm the proportion in each set is correct.
+table(zf_filtered$type) / nrow(zf_filtered)
 
 # Remove redundant variables.
-checklists <- zf_split %>% 
+checklists <- zf_filtered |> 
   select(checklist_id, observer_id, type,
          observation_count, species_observed, 
          state_code, locality_id, latitude, longitude,
@@ -411,10 +468,15 @@ checklists <- zf_split %>%
          effort_hours, effort_distance_km, effort_speed_kmph,
          number_observers)
 
-# write_csv(checklists, "data/checklists-zf_woothr_june_us-ga.csv", na = "")
+write_csv(checklists, 
+          "data/Mountain-Bluebird_CA/checklists-zf_moublu_Summer_US-CA.csv", 
+          na = "")
 
 
-# 2.7 Exploratory analysis and visualization ------------------------------
+
+# 2.9 Exploratory analysis and visualization ------------------------------
+
+
 
 # load and project gis data to albers equal area conic projection
 map_proj <- st_crs("ESRI:102003")
