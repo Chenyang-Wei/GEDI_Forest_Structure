@@ -473,65 +473,82 @@ write_csv(checklists,
           na = "")
 
 
-
 # 2.9 Exploratory analysis and visualization ------------------------------
 
-
-
-# load and project gis data to albers equal area conic projection
-map_proj <- st_crs("ESRI:102003")
-
-ne_land <- read_sf("data/gis-data.gpkg", "ne_land") %>% 
-  st_transform(crs = map_proj) %>% 
+# Load the GIS data.
+ne_land <- read_sf("data/gis-data.gpkg", "ne_land") |> 
+  st_geometry()
+ne_country_lines <- read_sf("data/gis-data.gpkg", "ne_country_lines") |> 
+  st_geometry()
+ne_state_lines <- read_sf("data/gis-data.gpkg", "ne_state_lines") |> 
+  st_geometry()
+study_region <- read_sf("data/gis-data.gpkg", "ne_states") |> 
+  filter(state_code == "US-CA") |> 
   st_geometry()
 
-ne_country_lines <- read_sf("data/gis-data.gpkg", "ne_country_lines") %>% 
-  st_transform(crs = map_proj) %>% 
-  st_geometry()
-
-ne_state_lines <- read_sf("data/gis-data.gpkg", "ne_state_lines") %>% 
-  st_transform(crs = map_proj) %>% 
-  st_geometry()
-
-ga_boundary <- read_sf("data/gis-data.gpkg", "ne_states") %>% 
-  filter(state_code == "US-GA") %>% 
-  st_transform(crs = map_proj) %>% 
-  st_geometry()
-
-# prepare ebird data for mapping
-checklists_sf <- checklists %>% 
-  # convert to spatial points
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) %>% 
-  st_transform(crs = map_proj) %>% 
+# Prepare the eBird data for mapping.
+checklists_sf <- checklists |> 
+  # Convert the data to point features.
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326) |> 
   select(species_observed)
 
-# map
-par(mar = c(0.25, 0.25, 0.25, 0.25))
-# set up plot area
-plot(st_geometry(checklists_sf), col = NA)
-# contextual gis data
-plot(ne_land, col = "#dddddd", border = "#888888", lwd = 0.5, add = TRUE)
-plot(ga_boundary, col = "#cccccc", border = NA, add = TRUE)
-plot(ne_state_lines, col = "#ffffff", lwd = 0.75, add = TRUE)
-plot(ne_country_lines, col = "#ffffff", lwd = 1.5, add = TRUE)
-# ebird observations
-# not observed
-plot(filter(checklists_sf, !species_observed),
-     pch = 19, cex = 0.1, col = alpha("#555555", 0.25),
+## Create and output a map.
+if (!dir.exists("results")) {
+  dir.create("results")
+}
+
+png(filename = "results/eBird_Observation_Map.png",
+    width = 1440, height = 1440, units = "px",
+    res = 200)
+
+par(mar = c(0.25, 0.25, 4, 0.25))
+
+# Set up the plot area.
+plot(st_geometry(checklists_sf), 
+     main = "Mountain Bluebird eBird Observations\nSummer 2019-2022",
+     col = NA, border = NA)
+
+# Add the GIS data.
+plot(ne_land, 
+     col = "#cfcfcf", border = "#888888", lwd = 0.5, add = TRUE)
+
+plot(study_region, 
+     col = "#e6e6e6", border = NA, add = TRUE)
+
+plot(ne_state_lines, 
+     col = "#ffffff", lwd = 0.75, add = TRUE)
+
+plot(ne_country_lines, 
+     col = "#ffffff", lwd = 1.5, add = TRUE)
+
+# Plot the eBird observations.
+#   Not observed.
+plot(filter(checklists_sf, 
+            !species_observed),
+     pch = 19, cex = 0.1, 
+     col = alpha("#555555", 0.25),
      add = TRUE)
-# observed
-plot(filter(checklists_sf, species_observed),
-     pch = 19, cex = 0.3, col = alpha("#4daf4a", 1),
+
+#   Observed.
+plot(filter(checklists_sf, 
+            species_observed),
+     pch = 19, cex = 0.3, 
+     col = alpha("#4daf4a", 1),
      add = TRUE)
-# legend
-legend("bottomright", bty = "n",
+
+# Add a legend.
+legend("bottomleft", bty = "n",
        col = c("#555555", "#4daf4a"),
-       legend = c("eBird checklists", "Wood Thrush sightings"),
+       legend = c("eBird checklist", 
+                  "Mountain Bluebird sighting"),
        pch = 19)
 
 box()
-par(new = TRUE, mar = c(0, 0, 3, 0))
-title("Wood Thrush eBird Observations\nJune 2014-2023")
+
+dev.off()
+
+
+
 
 
 ## 2.7.1 Time of day
