@@ -1,17 +1,3 @@
-/**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var geometry = 
-    /* color: #d63000 */
-    /* displayProperties: [
-      {
-        "type": "rectangle"
-      }
-    ] */
-    ee.Geometry.Polygon(
-        [[[-120.77774115591443, 40.23745729400148],
-          [-120.77774115591443, 38.35873575869755],
-          [-120.09658881216443, 38.35873575869755],
-          [-120.09658881216443, 40.23745729400148]]], null, false);
-/***** End of imports. If edited, may not auto-convert in the playground. *****/
 /*******************************************************************************
  * Introduction *
  * 
@@ -101,7 +87,7 @@ var l2bRaster_IC = ee.ImageCollection("LARSE/GEDI/GEDI02_B_002_MONTHLY")
 var studyArea_FC = US_states_FC.filter(
   ee.Filter.inList({
     leftField: "NAME", 
-    rightValue: ["California"]
+    rightValue: ["Ohio", "Wisconsin"]
   }));
 
 // Extract the geometry of the study area.
@@ -158,43 +144,43 @@ var rawPAI_median, i, Year, Month;
 
 // Visualization.
 Map.setOptions("Satellite");
-Map.centerObject(studyArea_Geom, 12);
-// Map.setCenter(-82.2498, 40.274, 12);
+// Map.centerObject(studyArea_Geom, 6);
+Map.setCenter(-82.2498, 40.274, 12);
 
 Map.addLayer(studyArea_Geom, 
   {
     color: "FFFFFF"
   }, 
-  "Study Area");
+  "States of Ohio and Wisconsin");
 
 Map.addLayer(rawForest_Img, 
   {
     bands: ["Map"],
     palette: ["808080"]
   }, 
-  "Forested Regions (10 m)",
+  "Forested Areas (10 m)",
   true);
 
 // Year of collection.
 var yearColors_List = ["e41a1c", "377eb8", 
   "4daf4a", "984ea3", "ff7f00"];
 
-// for (i = 0; i <= 4; i ++) {
+for (i = 0; i <= 4; i ++) {
   
-//   Year = i + 2019;
+  Year = i + 2019;
   
-//   rawPAI_median = rawPAI_IC.filter(
-//     ee.Filter.calendarRange({
-//       start: Year, 
-//       field: "year"
-//     })
-//   ).median();
-//   // .aside(print);
+  rawPAI_median = rawPAI_IC.filter(
+    ee.Filter.calendarRange({
+      start: Year, 
+      field: "year"
+    })
+  ).median();
+  // .aside(print);
 
-//   Map.addLayer(rawPAI_median, 
-//     {palette: yearColors_List[i]}, 
-//     "Total Plant Area Index in " + Year);
-// }
+  Map.addLayer(rawPAI_median, 
+    {palette: yearColors_List[i]}, 
+    "Total Plant Area Index in " + Year);
+}
 
 // Month of collection.
 var monthColors_List = ['#a6cee3','#1f78b4','#b2df8a',
@@ -208,29 +194,29 @@ var rawPAI_2021_IC = rawPAI_IC.filter(
   })
 );
 
-// for (Month = 1; Month <= 12; Month ++) {
+for (Month = 1; Month <= 12; Month ++) {
   
-//   // // Switch colors between months.
-//   // if (Month % 2 === 0) {
-//   //   var monthColor_Str = "0000FF";
-//   // }
-//   // else {
-//   //   var monthColor_Str = "FF0000";
-//   // }
+  // // Switch colors between months.
+  // if (Month % 2 === 0) {
+  //   var monthColor_Str = "0000FF";
+  // }
+  // else {
+  //   var monthColor_Str = "FF0000";
+  // }
   
-//   rawPAI_median = rawPAI_2021_IC.filter(
-//     ee.Filter.calendarRange({
-//       start: Month, 
-//       field: "month"
-//     })
-//   ).median();
-//   // .aside(print);
+  rawPAI_median = rawPAI_2021_IC.filter(
+    ee.Filter.calendarRange({
+      start: Month, 
+      field: "month"
+    })
+  ).median();
+  // .aside(print);
 
-//   Map.addLayer(rawPAI_median, 
-//     // {palette: monthColor_Str}, 
-//     {palette: monthColors_List[Month]}, 
-//     "Total Plant Area Index in 2021/" + Month);
-// }
+  Map.addLayer(rawPAI_median, 
+    // {palette: monthColor_Str}, 
+    {palette: monthColors_List[Month]}, 
+    "Total Plant Area Index in 2021/" + Month);
+}
 
 
 /*******************************************************************************
@@ -245,12 +231,6 @@ if (!output) {
   // print(reprojectedForest_Img.projection().nominalScale());
   print(studyArea_Geom);
   print(rawPAI_IC.aggregate_array("year").distinct());
-  print(rawPAI_IC.filter(
-    ee.Filter.calendarRange({
-      start: 2019, 
-      field: "year"
-    })
-  ).aggregate_array("month").distinct());
   print(rawPAI_IC.first());
   
   Map.addLayer(pai_Forest3k_Img, 

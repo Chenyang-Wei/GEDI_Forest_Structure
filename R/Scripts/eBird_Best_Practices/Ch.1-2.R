@@ -1,6 +1,6 @@
 ## "Best Practices for Using eBird Data"
 ## Source: https://ebird.github.io/ebird-best-practices/ebird.html
-## Last updated: 2/20/2024.
+## Last updated: 2/26/2024.
 
 
 ###### Chapter 1: Introduction and Setup ######
@@ -21,6 +21,7 @@ remotes::install_github("ebird/ebird-best-practices")
 library(dplyr)
 library(rnaturalearth)
 library(sf)
+library(ebirdst) # grid_sample_stratified().
 
 setwd("C:/Research_Projects/Bird/eBird")
 
@@ -548,185 +549,116 @@ box()
 dev.off()
 
 
+# Optional: Subsampling ---------------------------------------------------
 
+# Set random number seed for reproducibility.
+set.seed(1)
 
+# Sample one checklist per 3km x 3km x 1 week grid for each year.
+#   (Sample detection/non-detection independently.)
+checklists_ss <- grid_sample_stratified(checklists,
+                                        obs_column = "species_observed",
+                                        sample_by = "type")
 
-## 2.7.1 Time of day
+nrow(checklists) # 358608.
 
-# summarize data by hourly bins
-breaks <- seq(0, 24)
+nrow(checklists_ss) # 117322.
 
-labels <- breaks[-length(breaks)] + diff(breaks) / 2
+write_csv(checklists_ss, 
+          "data/Mountain-Bluebird_CA/checklists-ss_moublu_Summer_US-CA.csv", 
+          na = "")
 
-checklists_time <- checklists %>% 
-  mutate(hour_bins = cut(hours_of_day, 
-                         breaks = breaks, 
-                         labels = labels,
-                         include.lowest = TRUE),
-         hour_bins = as.numeric(as.character(hour_bins))) %>% 
-  group_by(hour_bins) %>% 
-  summarise(n_checklists = n(),
-            n_detected = sum(species_observed),
-            det_freq = mean(species_observed))
+# Convert checklists to spatial features.
+all_pts <- checklists |>  
+  # filter(type == "train") |> 
+  st_as_sf(coords = c("longitude","latitude"), crs = 4326) |>
+  select(species_observed)
 
-# histogram
-g_tod_hist <- ggplot(checklists_time) +
-  aes(x = hour_bins, y = n_checklists) +
-  geom_segment(aes(xend = hour_bins, y = 0, yend = n_checklists),
-               color = "grey50") +
-  geom_point() +
-  scale_x_continuous(breaks = seq(0, 24, by = 3), limits = c(0, 24)) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(x = "Hours since midnight",
-       y = "# checklists",
-       title = "Distribution of observation start times")
+ss_pts <- checklists_ss |>  
+  # filter(type == "train") |> 
+  st_as_sf(coords = c("longitude","latitude"), crs = 4326) |>
+  select(species_observed)
 
-# frequency of detection
-g_tod_freq <- ggplot(checklists_time %>% filter(n_checklists > 100)) +
-  aes(x = hour_bins, y = det_freq) +
-  geom_line() +
-  geom_point() +
-  scale_x_continuous(breaks = seq(0, 24, by = 3), limits = c(0, 24)) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(x = "Hours since midnight",
-       y = "% checklists with detections",
-       title = "Detection frequency")
+both_pts <- list(
+  before_ss = all_pts, 
+  after_ss = ss_pts)
 
-# combine
-grid.arrange(g_tod_hist, g_tod_freq)
+## Create two maps for comparison.
+png(filename = "results/eBird_Sub-sampling.png",
+    width = 2880, height = 1440, units = "px",
+    res = 200)
 
+p <- par(mfrow = c(1, 2))
 
-## 2.7.2 Checklist duration
+for (i in seq_along(both_pts)) {
+  
+  par(mar = c(0.25, 0.25, 0.25, 0.25))
+  
+  # Set up the plot area.
+  plot(st_geometry(both_pts[[i]]), col = NA)
+  
+  # Add the GIS data.
+  plot(ne_land, 
+       col = "#dddddd", border = "#888888", lwd = 0.5, add = TRUE)
+  
+  plot(study_region, 
+       col = "#cccccc", border = NA, add = TRUE)
+  
+  plot(ne_state_lines, 
+       col = "#ffffff", lwd = 0.75, add = TRUE)
+  
+  plot(ne_country_lines, 
+       col = "#ffffff", lwd = 1.5, add = TRUE)
+  
+  # Plot the eBird observations.
+  #   Not observed.
+  plot(both_pts[[i]] |> 
+         st_geometry(),
+       pch = 19, cex = 0.1, 
+       col = alpha("#555555", 0.25),
+       add = TRUE)
+  
+  #   Observed.
+  plot(both_pts[[i]] |> 
+         filter(species_observed) |> 
+         st_geometry(),
+       pch = 19, cex = 0.3, 
+       col = alpha("#4daf4a", 0.5),
+       add = TRUE)
+  
+  # Add a legend.
+  legend("bottomleft", bty = "n",
+         col = c("#555555", "#4daf4a"),
+         legend = c("Non-detection", 
+                    "Detection"),
+         pch = 19)
+  
+  box()
+  
+  par(new = TRUE, 
+      mar = c(0, 0, 3, 0))
+  
+  if (names(both_pts)[i] == "before_ss") {
+    title("Before subsampling")
+  } else {
+    title("After subsampling")
+  }
+}
 
-# summarize data by hour long bins
-breaks <- seq(0, 6)
+dev.off()
 
-labels <- breaks[-length(breaks)] + diff(breaks) / 2
+# Output a SHP file.
+checklists_ss_sf <- checklists_ss |>  
+  st_as_sf(coords = c("longitude","latitude"), crs = 4326)
 
-checklists_duration <- checklists %>% 
-  mutate(duration_bins = cut(effort_hours, 
-                             breaks = breaks, 
-                             labels = labels,
-                             include.lowest = TRUE),
-         duration_bins = as.numeric(as.character(duration_bins))) %>% 
-  group_by(duration_bins) %>% 
-  summarise(n_checklists = n(),
-            n_detected = sum(species_observed),
-            det_freq = mean(species_observed))
+checklists_ss_sf$Detection <- checklists_ss_sf$species_observed |> 
+  as.numeric()
 
-# histogram
-g_duration_hist <- ggplot(checklists_duration) +
-  aes(x = duration_bins, y = n_checklists) +
-  geom_segment(aes(xend = duration_bins, y = 0, yend = n_checklists),
-               color = "grey50") +
-  geom_point() +
-  scale_x_continuous(breaks = breaks) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(x = "Checklist duration (hours)",
-       y = "# checklists",
-       title = "Distribution of checklist durations")
+if(!dir.exists("data/Mountain-Bluebird_CA/Sub-sampling")) {
+  dir.create("data/Mountain-Bluebird_CA/Sub-sampling")
+}
 
-# frequency of detection
-g_duration_freq <- ggplot(checklists_duration %>% filter(n_checklists > 100)) +
-  aes(x = duration_bins, y = det_freq) +
-  geom_line() +
-  geom_point() +
-  scale_x_continuous(breaks = breaks) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(x = "Checklist duration (hours)",
-       y = "% checklists with detections",
-       title = "Detection frequency")
-
-# combine
-grid.arrange(g_duration_hist, g_duration_freq)
-
-
-## 2.7.3 Distance traveled
-
-# summarize data by 1 km bins
-breaks <- seq(0, 10)
-
-labels <- breaks[-length(breaks)] + diff(breaks) / 2
-
-checklists_dist <- checklists %>% 
-  mutate(dist_bins = cut(effort_distance_km, 
-                         breaks = breaks, 
-                         labels = labels,
-                         include.lowest = TRUE),
-         dist_bins = as.numeric(as.character(dist_bins))) %>% 
-  group_by(dist_bins) %>% 
-  summarise(n_checklists = n(),
-            n_detected = sum(species_observed),
-            det_freq = mean(species_observed))
-
-# histogram
-g_dist_hist <- ggplot(checklists_dist) +
-  aes(x = dist_bins, y = n_checklists) +
-  geom_segment(aes(xend = dist_bins, y = 0, yend = n_checklists),
-               color = "grey50") +
-  geom_point() +
-  scale_x_continuous(breaks = breaks) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(x = "Distance travelled (km)",
-       y = "# checklists",
-       title = "Distribution of distance travelled")
-
-# frequency of detection
-g_dist_freq <- ggplot(checklists_dist %>% filter(n_checklists > 100)) +
-  aes(x = dist_bins, y = det_freq) +
-  geom_line() +
-  geom_point() +
-  scale_x_continuous(breaks = breaks) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(x = "Distance travelled (km)",
-       y = "% checklists with detections",
-       title = "Detection frequency")
-
-# combine
-grid.arrange(g_dist_hist, g_dist_freq)
-
-
-## 2.7.4 Number of observers
-
-# summarize data
-breaks <- seq(0, 10)
-
-labels <- seq(1, 10)
-
-checklists_obs <- checklists %>% 
-  mutate(obs_bins = cut(number_observers, 
-                        breaks = breaks, 
-                        label = labels,
-                        include.lowest = TRUE),
-         obs_bins = as.numeric(as.character(obs_bins))) %>% 
-  group_by(obs_bins) %>% 
-  summarise(n_checklists = n(),
-            n_detected = sum(species_observed),
-            det_freq = mean(species_observed))
-
-# histogram
-g_obs_hist <- ggplot(checklists_obs) +
-  aes(x = obs_bins, y = n_checklists) +
-  geom_segment(aes(xend = obs_bins, y = 0, yend = n_checklists),
-               color = "grey50") +
-  geom_point() +
-  scale_x_continuous(breaks = breaks) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(x = "# observers",
-       y = "# checklists",
-       title = "Distribution of the number of observers")
-
-# frequency of detection
-g_obs_freq <- ggplot(checklists_obs %>% filter(n_checklists > 100)) +
-  aes(x = obs_bins, y = det_freq) +
-  geom_line() +
-  geom_point() +
-  scale_x_continuous(breaks = breaks) +
-  scale_y_continuous(labels = scales::percent) +
-  labs(x = "# observers",
-       y = "% checklists with detections",
-       title = "Detection frequency")
-
-# combine
-grid.arrange(g_obs_hist, g_obs_freq)
+st_write(checklists_ss_sf,
+         "data/Mountain-Bluebird_CA/Sub-sampling/checklists-ss.shp",
+         delete_layer = TRUE)
 
