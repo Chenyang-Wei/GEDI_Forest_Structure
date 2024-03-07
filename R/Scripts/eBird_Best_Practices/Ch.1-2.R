@@ -230,7 +230,7 @@ checklists_unique |>
          observer_id)
 
 
-## 2.4.1 Taxonomic rollup
+## 2.4.2 Taxonomic rollup
 
 # Import one of the auk example datasets without rolling up taxonomy.
 obs_ex <- 
