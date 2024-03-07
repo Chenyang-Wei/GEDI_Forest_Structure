@@ -11,7 +11,6 @@
 # Load packages.
 library(auk) # eBird Data Extraction and Processing in R.
 library(tidyverse)
-library(gridExtra)
 library(sf)
 library(ggspatial) # Visualization.
 
@@ -24,7 +23,7 @@ setwd("C:/Postdoc/NSF_LiDAR-Birds/LiDAR-Birds")
 
 # 2) Dataset loading ------------------------------------------------------
 
-# Define a few file paths.
+# Define the file path of eBird data.
 filePath_data <- file.path(
   "Data",
   "eBird",
