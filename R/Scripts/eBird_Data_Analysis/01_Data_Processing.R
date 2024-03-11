@@ -1,6 +1,6 @@
 # ##############################################################################
 # Introduction:
-#   1) Pre-process and filter the unzipped eBird datasets.
+#   1) Process and filter the unzipped eBird datasets.
 # 
 # Last updated: 3/6/2024.
 # ##############################################################################
