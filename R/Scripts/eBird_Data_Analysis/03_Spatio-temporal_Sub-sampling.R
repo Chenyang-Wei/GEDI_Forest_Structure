@@ -119,11 +119,18 @@ allSpecies_SubSampled_sf <- allSpecies_SubSampled |>
            crs = 4326)
 
 # Save the point features.
-gpkg_FilePath <- "Results/Forest_Species_CA_NV.gpkg"
-
 st_write(obj = allSpecies_SubSampled_sf,
          dsn = gpkg_FilePath,
          layer = "allSpecies_SubSampled",
+         delete_layer = TRUE)
+
+# Save the point features as a shapefile.
+if (!dir.exists("Results/allSpecies_SubSampled")) {
+  dir.create("Results/allSpecies_SubSampled")
+}
+
+st_write(obj = allSpecies_SubSampled_sf,
+         dsn = "Results/allSpecies_SubSampled/allSpecies_SubSampled.shp",
          delete_layer = TRUE)
 
 
