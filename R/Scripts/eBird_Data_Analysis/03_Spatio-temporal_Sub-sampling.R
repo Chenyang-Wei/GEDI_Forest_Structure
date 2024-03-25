@@ -2,7 +2,7 @@
 # Introduction:
 #   1) Spatio-temporally sub-sample the eBird observations.
 # 
-# Last updated: 3/11/2024.
+# Last updated: 3/24/2024.
 # ##############################################################################
 
 
@@ -34,6 +34,15 @@ allSpecies_sf <- st_read(
 
 glimpse(allSpecies_sf)
 summary(allSpecies_sf)
+
+# Save the filtered point features as a shapefile.
+if (!dir.exists("Results/allSpecies_Filtered")) {
+  dir.create("Results/allSpecies_Filtered")
+}
+
+st_write(obj = allSpecies_sf,
+         dsn = "Results/allSpecies_Filtered/allSpecies_Filtered.shp",
+         delete_layer = TRUE)
 
 # Load the study area.
 studyArea <- st_read(
