@@ -32,8 +32,22 @@ allSpecies_sf <- st_read(
   layer = "zerofilled_AllSpecies",
   stringsAsFactors = TRUE)
 
+allSpecies_sf |> 
+  select(scientific_name) |> 
+  summary()
+
+# Add the coordinates.
+checklistCoords <- allSpecies_sf |> 
+  st_coordinates() |> 
+  as.data.frame()
+
+allSpecies_sf <- allSpecies_sf |> 
+  mutate(
+    longitude = checklistCoords$X,
+    latitude = checklistCoords$Y
+  )
+
 glimpse(allSpecies_sf)
-summary(allSpecies_sf)
 
 # Save the filtered point features as a shapefile.
 if (!dir.exists("Results/allSpecies_Filtered")) {
@@ -43,6 +57,13 @@ if (!dir.exists("Results/allSpecies_Filtered")) {
 st_write(obj = allSpecies_sf,
          dsn = "Results/allSpecies_Filtered/allSpecies_Filtered.shp",
          delete_layer = TRUE)
+
+# Buffer the filtered point features.
+buffers_sf <- allSpecies_sf |> 
+  # Identify unique location/year combinations
+  distinct(locality_id, year, longitude, latitude) |> 
+  # generate a 3-km circle. 
+  st_buffer(dist = set_units(1.5, "km"))
 
 # Load the study area.
 studyArea <- st_read(

@@ -2,7 +2,7 @@
 # Introduction:
 #   1) Model the encounter rate of each species.
 # 
-# Last updated: 3/12/2024.
+# Last updated: 3/25/2024.
 # ##############################################################################
 
 
@@ -11,6 +11,7 @@
 # Load packages.
 library(sf)
 library(tidyverse)
+library(gridExtra)
 library(ranger) # Random forest.
 library(scam) # Calibration.
 library(ebirdst) # calculate_mcc_f1().
@@ -32,9 +33,9 @@ set.seed(17)
 
 # Read the sampled environmental variables of the training dataset.
 trainingVars_sf <- st_read(
-  dsn = file.path("Results", "sampledVars_AllSpecies",
-                  "trainingVars_AllSpecies",
-                  "trainingVars_AllSpecies.shp"),
+  dsn = file.path("Results", "sampledVars_CircularBuffers",
+                  "Buf_Training_AllVars_SSd",
+                  "Buf_Training_AllVars_SSd.shp"),
   stringsAsFactors = TRUE)
 
 glimpse(trainingVars_sf)
@@ -52,54 +53,126 @@ training_Vars <- trainingVars_df |>
   select(
     ## eBird columns.
     scntfc_, spcs_bs,
-    year, dy_f_yr, hrs_f_d,
-    effrt_h, effrt_d_, effrt_s_,
-    nmbr_bs,
+    year, 
+    # dy_f_yr, hrs_f_d,
+    # effrt_h, effrt_d_, effrt_s_,
+    # nmbr_bs,
     
     ## Environmental variables.
     # NDVI.
-    starts_with("NDVI_"),
+    starts_with("ND_"),
+    
     # Topography.
     starts_with("elv_"),
-    starts_with("slope_"),
-    starts_with("aspect_"),
-    # Forests.
-    evergreen_, deciduous_, mixed_Prop,
+    starts_with("slp_"),
+    starts_with("asp_"),
+    
+    # Forest land cover.
+    starts_with("Df_"),
+    starts_with("Ef_"),
+    starts_with("Mf_"),
+    
     # GEDI.
     starts_with("rh98_"),
     starts_with("cover_"),
     starts_with("fhd_"),
     starts_with("pai_"),
-    GEDI_Propo
+    
+    # Empty images.
+    starts_with("empty_"), # 30-m resolution.
+    starts_with("emp_25m_") # 25-m resolution.
   )
 
 # Rename the selected columns.
 colnames(training_Vars) <- c(
-  "s_Name", "sp_Obsd", 
-  "year", "D_of_Y", "H_of_D",
-  "ef_Hours", "ef_Dist", "ef_Speed", 
-  "num_Obsr",
-  "NDVI_mn", "NDVI_SD",
-  "elv_mn", "elv_SD", "slope_SD", "slope_mean", "aspect_mn", "aspect_std",
-  "evergreen", "deciduous", "mixed",
-  "rh98_mn", "rh98_SD", "cover_mn", "cover_SD",
-  "fhd_mn", "fhd_SD", "pai_SD", "pai_mn",
-  "GEDI_ratio"
+  "scientific_Name", "species_Observed", 
+  "year", 
+  # "D_of_Y", "H_of_D",
+  # "ef_Hours", "ef_Dist", "ef_Speed", 
+  # "num_Obsr",
+  
+  "NDVI_mean", "NDVI_count", "NDVI_SD", 
+  
+  "elv_mean", "elv_count", "elv_SD", 
+  "slope_mean", "slope_count", "slope_SD", 
+  "aspect_SD", "aspect_count", "aspect_mean", 
+  
+  "Deci_F_SD", "Deci_F_mean", "Deci_F_count", 
+  "Ever_F_mean", "Ever_F_count", "Ever_F_SD", 
+  "Mix_F_mean", "Mix_F_count", "Mix_F_SD", 
+  
+  "rh98_SD", "rh98_mean", "rh98_count", 
+  "cover_SD", "cover_count", "cover_mean", 
+  "fhd_count", "fhd_SD", "fhd_mean", 
+  "pai_SD", "pai_mean", "pai_count", 
+  
+  "EI_30m_mean", "EI_30m_count", "EI_30m_SD", # Empty Images.
+  "EI_25m_SD", "EI_25m_count", "EI_25m_mean"
 )
 
-# Replace NA with 0.
-training_Vars <- training_Vars %>% replace(is.na(.), 0)
+# Further select the variables to use for modeling.
+training_Vars <- training_Vars |> 
+  select(
+    scientific_Name, species_Observed, year,
+    
+    NDVI_mean, NDVI_SD,
+    
+    elv_mean, elv_SD,
+    slope_mean, slope_SD,
+    aspect_mean, aspect_SD,
+    
+    Deci_F_count, Ever_F_count, Mix_F_count,
+    
+    rh98_mean, rh98_SD, rh98_count,
+    cover_mean, cover_SD, cover_count,
+    fhd_mean, fhd_SD, fhd_count,
+    pai_mean, pai_SD, pai_count,
+    
+    EI_30m_count, EI_25m_count
+  )
+
+head(training_Vars)
+
+# Keep observations with all the GEDI variables.
+training_Vars <- training_Vars |> 
+  filter(rh98_count > 0 & 
+           cover_count > 0 & 
+           fhd_count > 0 & 
+           pai_count > 0)
+
+# # Replace NA with 0.
+# training_Vars <- training_Vars %>% replace(is.na(.), 0)
+
+# Calculate the coverage ratios of several variables.
+training_Vars <- training_Vars |> 
+  mutate(
+    # Forest land cover.
+    Deci_F_ratio = Deci_F_count / EI_30m_count,
+    Ever_F_ratio = Ever_F_count / EI_30m_count,
+    Mix_F_ratio = Mix_F_count / EI_30m_count,
+    
+    # GEDI.
+    rh98_ratio = rh98_count / EI_25m_count,
+    cover_ratio = cover_count / EI_25m_count,
+    fhd_ratio = fhd_count / EI_25m_count,
+    pai_ratio = pai_count / EI_25m_count
+  )
+
+# Remove the "count" variables.
+training_Vars <- training_Vars |> 
+  select(-ends_with("_count"))
 
 summary(training_Vars)
+nrow(training_Vars)
 
 
 # 3) Test dataset loading -------------------------------------------------
 
 # Read the sampled environmental variables of the test dataset.
 testVars_sf <- st_read(
-  dsn = file.path("Results", "sampledVars_AllSpecies",
-                  "testVars_AllSpecies",
-                  "testVars_AllSpecies.shp"),
+  dsn = file.path("Results", "sampledVars_CircularBuffers",
+                  "Buf_Test_AllVars_SSd",
+                  "Buf_Test_AllVars_SSd.shp"),
   stringsAsFactors = TRUE)
 
 glimpse(testVars_sf)
@@ -117,56 +190,131 @@ test_Vars <- testVars_df |>
   select(
     ## eBird columns.
     scntfc_, spcs_bs,
-    year, dy_f_yr, hrs_f_d,
-    effrt_h, effrt_d_, effrt_s_,
-    nmbr_bs,
+    year, 
+    # dy_f_yr, hrs_f_d,
+    # effrt_h, effrt_d_, effrt_s_,
+    # nmbr_bs,
     
     ## Environmental variables.
     # NDVI.
-    starts_with("NDVI_"),
+    starts_with("ND_"),
+    
     # Topography.
     starts_with("elv_"),
-    starts_with("slope_"),
-    starts_with("aspect_"),
-    # Forests.
-    evergreen_, deciduous_, mixed_Prop,
+    starts_with("slp_"),
+    starts_with("asp_"),
+    
+    # Forest land cover.
+    starts_with("Df_"),
+    starts_with("Ef_"),
+    starts_with("Mf_"),
+    
     # GEDI.
     starts_with("rh98_"),
     starts_with("cover_"),
     starts_with("fhd_"),
     starts_with("pai_"),
-    GEDI_Propo
+    
+    # Empty images.
+    starts_with("empty_"), # 30-m resolution.
+    starts_with("emp_25m_") # 25-m resolution.
   )
 
 # Rename the selected columns.
 colnames(test_Vars) <- c(
-  "s_Name", "sp_Obsd", 
-  "year", "D_of_Y", "H_of_D",
-  "ef_Hours", "ef_Dist", "ef_Speed", 
-  "num_Obsr",
-  "NDVI_mn", "NDVI_SD",
-  "elv_mn", "elv_SD", "slope_SD", "slope_mean", "aspect_mn", "aspect_std",
-  "evergreen", "deciduous", "mixed",
-  "rh98_mn", "rh98_SD", "cover_mn", "cover_SD",
-  "fhd_mn", "fhd_SD", "pai_SD", "pai_mn",
-  "GEDI_ratio"
+  "scientific_Name", "species_Observed", 
+  "year", 
+  # "D_of_Y", "H_of_D",
+  # "ef_Hours", "ef_Dist", "ef_Speed", 
+  # "num_Obsr",
+  
+  "NDVI_mean", "NDVI_count", "NDVI_SD", 
+  
+  "elv_mean", "elv_count", "elv_SD", 
+  "slope_mean", "slope_count", "slope_SD", 
+  "aspect_SD", "aspect_count", "aspect_mean", 
+  
+  "Deci_F_SD", "Deci_F_mean", "Deci_F_count", 
+  "Ever_F_mean", "Ever_F_count", "Ever_F_SD", 
+  "Mix_F_mean", "Mix_F_count", "Mix_F_SD", 
+  
+  "rh98_SD", "rh98_mean", "rh98_count", 
+  "cover_SD", "cover_count", "cover_mean", 
+  "fhd_count", "fhd_SD", "fhd_mean", 
+  "pai_SD", "pai_mean", "pai_count", 
+  
+  "EI_30m_mean", "EI_30m_count", "EI_30m_SD", # Empty Images.
+  "EI_25m_SD", "EI_25m_count", "EI_25m_mean"
 )
 
-# Replace NA with 0.
-test_Vars <- test_Vars %>% replace(is.na(.), 0)
+# Further select the variables to use for modeling.
+test_Vars <- test_Vars |> 
+  select(
+    scientific_Name, species_Observed, year,
+    
+    NDVI_mean, NDVI_SD,
+    
+    elv_mean, elv_SD,
+    slope_mean, slope_SD,
+    aspect_mean, aspect_SD,
+    
+    Deci_F_count, Ever_F_count, Mix_F_count,
+    
+    rh98_mean, rh98_SD, rh98_count,
+    cover_mean, cover_SD, cover_count,
+    fhd_mean, fhd_SD, fhd_count,
+    pai_mean, pai_SD, pai_count,
+    
+    EI_30m_count, EI_25m_count
+  )
+
+head(test_Vars)
+
+# Keep observations with all the GEDI variables.
+test_Vars <- test_Vars |> 
+  filter(rh98_count > 0 & 
+           cover_count > 0 & 
+           fhd_count > 0 & 
+           pai_count > 0)
+
+# # Replace NA with 0.
+# test_Vars <- test_Vars %>% replace(is.na(.), 0)
+
+# Calculate the coverage ratios of several variables.
+test_Vars <- test_Vars |> 
+  mutate(
+    # Forest land cover.
+    Deci_F_ratio = Deci_F_count / EI_30m_count,
+    Ever_F_ratio = Ever_F_count / EI_30m_count,
+    Mix_F_ratio = Mix_F_count / EI_30m_count,
+    
+    # GEDI.
+    rh98_ratio = rh98_count / EI_25m_count,
+    cover_ratio = cover_count / EI_25m_count,
+    fhd_ratio = fhd_count / EI_25m_count,
+    pai_ratio = pai_count / EI_25m_count
+  )
+
+# Remove the "count" variables.
+test_Vars <- test_Vars |> 
+  select(-ends_with("_count"))
 
 summary(test_Vars)
+nrow(test_Vars)
 
-# Create a correlation matrix of all numeric variables.
-sampledVars <- training_Vars |> 
+# Create a correlation matrix of all observations.
+sampledVars_AllObs <- 
+  training_Vars |> 
   bind_rows(test_Vars) |> 
-  select(-s_Name)
+  select(-scientific_Name)
 
-cor_matrix <- cor(sampledVars)
+cor_matrix_AllObs <- sampledVars_AllObs |> 
+  select(-c(rh98_ratio, cover_ratio, fhd_ratio, pai_ratio)) |> 
+  cor()
 
-melted_cor_matrix <- melt(cor_matrix)
+melted_cor_matrix_AllObs <- melt(cor_matrix_AllObs)
 
-cor_matrix_Plot <- ggplot(melted_cor_matrix, 
+cor_matrix_Plot_AllObs <- ggplot(melted_cor_matrix_AllObs, 
                           aes(Var1, Var2, fill = value)) +
   geom_tile() +
   scale_fill_viridis_c(option = "viridis",
@@ -174,24 +322,84 @@ cor_matrix_Plot <- ggplot(melted_cor_matrix,
                        breaks = c(-0.2, 0.2, 0.6, 1)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(x = NULL, y = NULL) +
+  labs(x = NULL, y = NULL,
+       title = "All Observations") +
   theme(
-    legend.position = "top",
+    legend.position = "bottom",
     legend.text = element_text(size = 6),
     legend.title = element_text(size = 8, face = "bold"),
     axis.text = element_text(size = 6))
 
-png(filename = "Results/Figures/cor_matrix_Plot.png", 
-    width = 2000, height = 2200, 
+# Create a correlation matrix of buffers with >= 1% GEDI.
+ratio_Thres <- 0.01
+
+sampledVars_Filtered <- sampledVars_AllObs |> 
+  filter(rh98_ratio >= ratio_Thres & 
+           cover_ratio >= ratio_Thres & 
+           fhd_ratio >= ratio_Thres & 
+           pai_ratio >= ratio_Thres)
+
+summary(sampledVars_Filtered)
+
+cor_matrix_Filtered <- sampledVars_Filtered |> 
+  select(-c(rh98_ratio, cover_ratio, fhd_ratio, pai_ratio)) |> 
+  cor()
+
+melted_cor_matrix_Filtered <- melt(cor_matrix_Filtered)
+
+cor_matrix_Plot_Filtered <- ggplot(melted_cor_matrix_Filtered, 
+                          aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "viridis",
+                       name = "Pearson\nCorrelation",
+                       breaks = c(-0.2, 0.2, 0.6, 1)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = NULL, y = NULL,
+       title = "Filtered Observations") +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 6),
+    legend.title = element_text(size = 8, face = "bold"),
+    axis.text = element_text(size = 6))
+
+if (!dir.exists("Results/Figures/Circular_Buffers")) {
+  dir.create("Results/Figures/Circular_Buffers")
+}
+
+png(filename = "Results/Figures/Circular_Buffers/cor_matrix_Plots.png", 
+    width = 4000, height = 2400, 
     units = "px", res = 400)
-cor_matrix_Plot
+grid.arrange(cor_matrix_Plot_AllObs, cor_matrix_Plot_Filtered, 
+             nrow = 1)
 dev.off()
+
+# Compare the datasets.
+nrow(sampledVars_AllObs) # 18161.
+nrow(sampledVars_Filtered) # 9466.
 
 
 # 4) Random forest modeling -----------------------------------------------
 
+# Filter the observations.
+trainingVars_Filtered <- training_Vars |> 
+  filter(rh98_ratio >= ratio_Thres & 
+           cover_ratio >= ratio_Thres & 
+           fhd_ratio >= ratio_Thres & 
+           pai_ratio >= ratio_Thres)
+
+testVars_Filtered <- test_Vars |> 
+  filter(rh98_ratio >= ratio_Thres & 
+           cover_ratio >= ratio_Thres & 
+           fhd_ratio >= ratio_Thres & 
+           pai_ratio >= ratio_Thres)
+
+trainingVars_Filtered |> 
+  select(ends_with("_ratio")) |> 
+  summary()
+
 # Determine the species names.
-training_Vars |> distinct(s_Name)
+trainingVars_Filtered |> distinct(scientific_Name)
 
 species_List <- c(
   "Certhia americana", 
@@ -210,19 +418,19 @@ pd_AllSpecies <- NULL
 for (speciesName in species_List) {
   
   # Derive the training dataset of each species.
-  trainingVars_OneSpecies <- training_Vars |> 
-    filter(s_Name == speciesName)
+  trainingVars_OneSpecies <- trainingVars_Filtered |> 
+    filter(scientific_Name == speciesName)
   
   # Derive the test dataset of each species.
-  testVars_OneSpecies <- test_Vars |> 
-    filter(s_Name == speciesName)
+  testVars_OneSpecies <- testVars_Filtered |> 
+    filter(scientific_Name == speciesName)
   
   # Calculate the proportion of detections in the dataset.
-  detection_freq <- mean(trainingVars_OneSpecies$sp_Obsd)
+  detection_freq <- mean(trainingVars_OneSpecies$species_Observed)
   
   # Fit a balanced random forest.
   # ranger requires a factor response to do classification
-  er_model <- ranger(formula =  as.factor(sp_Obsd) ~ ., 
+  er_model <- ranger(formula =  as.factor(species_Observed) ~ ., 
                      data = trainingVars_OneSpecies,
                      importance = "impurity",
                      probability = TRUE,
@@ -234,7 +442,7 @@ for (speciesName in species_List) {
   er_pred <- er_model$predictions[, 2]
   
   # Observed detection, converted back from factor.
-  det_obs <- as.integer(trainingVars_OneSpecies$sp_Obsd)
+  det_obs <- as.integer(trainingVars_OneSpecies$species_Observed)
   
   # Construct a data frame.
   obs_pred <- data.frame(obs = det_obs, pred = er_pred)
@@ -265,7 +473,7 @@ for (speciesName in species_List) {
   
   calibration_curve_OneSpecies$calibrated <- cal_pred
   
-  calibration_curve_OneSpecies$s_Name <- speciesName
+  calibration_curve_OneSpecies$scientific_Name <- speciesName
   
   calibration_curve_AllSpecies <- calibration_curve_OneSpecies |> 
     bind_rows(calibration_curve_AllSpecies)
@@ -288,7 +496,7 @@ for (speciesName in species_List) {
   ## Assessment.
   # Get the test dataset.
   testVars_OneSpecies <- testVars_OneSpecies |> 
-    mutate(sp_Obsd = as.integer(sp_Obsd))
+    mutate(species_Observed = as.integer(species_Observed))
   
   # Predict to test data using random forest model.
   pred_er <- predict(er_model, data = testVars_OneSpecies, 
@@ -316,7 +524,7 @@ for (speciesName in species_List) {
     id = seq_along(pred_calibrated),
     
     # Actual detection/non-detection.
-    obs = as.integer(testVars_OneSpecies$sp_Obsd),
+    obs = as.integer(testVars_OneSpecies$species_Observed),
     
     # Binary detection/on-detection prediction.
     pred_binary = pred_binary,
@@ -354,7 +562,7 @@ for (speciesName in species_List) {
   
   # Combine predictive performance metrics (PPMs) together.
   ppms_OneSpecies <- data.frame(
-    s_Name = speciesName,
+    scientific_Name = speciesName,
     threshold = threshold,
     detection_freq = detection_freq,
     mse = mse,
@@ -374,7 +582,7 @@ for (speciesName in species_List) {
   pi <- er_model$variable.importance
   
   pi_OneSpecies <- data.frame(
-    s_Name = speciesName,
+    scientific_Name = speciesName,
     predictor = names(pi), 
     importance = pi
   ) |> 
@@ -444,10 +652,10 @@ for (speciesName in species_List) {
     return(pd)
   }
   
-  # Calculate partial dependence for each of the top 10 predictors.
+  # Calculate partial dependence for each of the top 20 predictors.
   pd_OneSpecies <- NULL
   
-  for (predictor in head(pi_OneSpecies$predictor, 10)) {
+  for (predictor in head(pi_OneSpecies$predictor, 20)) {
     pd_OneSpecies <- calculate_pd(
       predictor,
       er_model = er_model,
@@ -457,7 +665,7 @@ for (speciesName in species_List) {
       bind_rows(pd_OneSpecies)
   }
   
-  pd_OneSpecies$s_Name <- speciesName
+  pd_OneSpecies$scientific_Name <- speciesName
   
   pd_AllSpecies <- pd_OneSpecies |> 
     bind_rows(pd_AllSpecies)
@@ -472,17 +680,16 @@ for (speciesName in species_List) {
 # Predictive performance metrics (PPMs).
 ppms_AllSpecies
 
-
 # Compared binned mean encounter rates to calibration model.
 calibrationCurve_BySpecies <- ggplot(calibration_curve_AllSpecies) +
   aes(x = pred, y = calibrated) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-  geom_line(aes(color = s_Name)) +
+  geom_line(aes(color = scientific_Name)) +
   geom_point(data = mean_er, 
              aes(x = pred, y = obs),
              size = 2, alpha = 0.6,
              show.legend = FALSE) +
-  facet_wrap(~ s_Name,
+  facet_wrap(~ scientific_Name,
              nrow = 1) +
   labs(x = "Estimated encounter rate",
        y = "Observed encounter rate",
@@ -495,7 +702,7 @@ calibrationCurve_BySpecies <- ggplot(calibration_curve_AllSpecies) +
     axis.text = element_text(size = 6)
   )
 
-png(filename = "Results/Figures/calibrationCurve_BySpecies.png", 
+png(filename = "Results/Figures/Circular_Buffers/calibrationCurve_BySpecies.png", 
     width = 2000, height = 1000, 
     units = "px", res = 200)
 calibrationCurve_BySpecies
@@ -508,7 +715,7 @@ pi_AllSpecies_Plot <- ggplot(pi_AllSpecies) +
   geom_hline(yintercept = 0, linewidth = 2, colour = "#555555") +
   scale_y_continuous(expand = c(0, 0)) +
   coord_flip() +
-  facet_wrap(~ s_Name, nrow = 1, scales = "free_x") +
+  facet_wrap(~ scientific_Name, nrow = 1, scales = "free_x") +
   labs(x = NULL,
        y = "Predictor Importance (Gini Index)") +
   theme_minimal() +
@@ -517,18 +724,17 @@ pi_AllSpecies_Plot <- ggplot(pi_AllSpecies) +
         axis.title.x = element_text(face = "bold"),
         axis.text = element_text(size = 6))
 
-png(filename = "Results/Figures/pi_AllSpecies_Plot.png", 
+png(filename = "Results/Figures/Circular_Buffers/pi_AllSpecies_Plot.png", 
     width = 2000, height = 1000, 
     units = "px", res = 200)
 pi_AllSpecies_Plot
 dev.off()
 
-
 # Plot partial dependence.
-pd_AllSpecies_Plot <- ggplot(filter(pd_AllSpecies, predictor != "deciduous")) +
-  aes(x = x, y = encounter_rate, color = s_Name) +
-  geom_line() +
-  geom_point() +
+pd_AllSpecies_Plot <- ggplot(filter(pd_AllSpecies, predictor %in% head(pi_OneSpecies$predictor, 10))) +
+  aes(x = x, y = encounter_rate, color = scientific_Name) +
+  geom_line(linewidth = 2, alpha = 0.8) +
+  # geom_point() +
   facet_wrap(~ factor(predictor, levels = rev(unique(predictor))), 
              nrow = 2, scales = "free_x") +
   labs(x = NULL, 
@@ -540,8 +746,8 @@ pd_AllSpecies_Plot <- ggplot(filter(pd_AllSpecies, predictor != "deciduous")) +
     legend.position = "bottom",
     axis.text = element_text(size = 6))
 
-png(filename = "Results/Figures/pd_AllSpecies_Plot.png", 
-    width = 2000, height = 1500, 
+png(filename = "Results/Figures/Circular_Buffers/pd_AllSpecies_Plot.png", 
+    width = 2500, height = 2000, 
     units = "px", res = 200)
 pd_AllSpecies_Plot
 dev.off()
