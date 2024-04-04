@@ -5,7 +5,7 @@
  * 
  *  2) GEDI coverage calculation
  * 
- *  3) Operation #3
+ *  3) Data combination
  * 
  * Updated: 3/11/2024
  * 

@@ -3,9 +3,9 @@
  * 
  *  1) Create and split a grid
  * 
- *  2) Subset the eBird observations
+ *  2) Buffer and subset the eBird observations
  * 
- * Updated: 3/11/2024
+ * Updated: 3/25/2024
  * 
  * Runtime: 2m
  * 
@@ -30,6 +30,9 @@ var split_Num = 0.75;
 
 // Grid scale.
 var gridScale_Num = 3e4;
+
+// Buffer radius.
+var radius_Num = 1.5e3;
 
 // Study area.
 var studyArea_Geom = ee.Feature(ee.FeatureCollection(
@@ -80,6 +83,11 @@ var Add_Type = function(ftr) {
   });
 };
 
+// Buffer the point Features.
+var Buffer_Pts = function(pt_Ftr) {
+  return pt_Ftr.buffer(radius_Num);
+};
+
 
 /*******************************************************************************
  * Datasets *
@@ -113,7 +121,7 @@ var testGrid_FC = Grid_FC.filter(
 
 
 /*******************************************************************************
- * 2) Subset the eBird observations *
+ * 2) Buffer and subset the eBird observations *
  ******************************************************************************/
 
 var type_Str;
@@ -132,10 +140,10 @@ var testObs_FC = allSpecies_FC
   .filterBounds(testGrid_FC)
   .map(Add_Type);
 
+// Buffer the point Features.
+trainingObs_FC = trainingObs_FC.map(Buffer_Pts);
 
-/*******************************************************************************
- * 3) Operation #3 *
- ******************************************************************************/
+testObs_FC = testObs_FC.map(Buffer_Pts);
 
 
 /*******************************************************************************
@@ -149,9 +157,9 @@ if (!output) {
   print("Grid cell #:", Grid_FC.size()); // 136.
   
   print("Sample sizes:", 
-    trainingObs_FC.size(), // 48195.
-    testObs_FC.size(), // 18196.
-    allSpecies_FC.size() // 66391.
+    trainingObs_FC.size(), // 565450.
+    testObs_FC.size(), // 208050.
+    allSpecies_FC.size() // 773500.
   );
   
   print("Data preview:", 
@@ -198,7 +206,7 @@ if (!output) {
   var fileName;
   
   // Training.
-  fileName = "trainingObs_AllSpecies";
+  fileName = "Buffered_TrainingObs_SubSampled";
   
   Export.table.toAsset({
     collection: trainingObs_FC, 
@@ -209,7 +217,7 @@ if (!output) {
   });
   
   // Test.
-  fileName = "testObs_AllSpecies";
+  fileName = "Buffered_TestObs_SubSampled";
   
   Export.table.toAsset({
     collection: testObs_FC, 
