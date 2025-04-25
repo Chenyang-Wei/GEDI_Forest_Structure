@@ -1,1 +1,0 @@
-https://ee-lidar-birds.projects.earthengine.app/view/testing
