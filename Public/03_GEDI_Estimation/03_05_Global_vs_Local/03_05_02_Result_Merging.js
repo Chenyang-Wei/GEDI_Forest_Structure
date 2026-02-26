@@ -1,9 +1,10 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) Merge the complete modeling results of all response variables.
+ *  1) Merge the results of globally trained and locally tested
+ *     complete models for all response variables.
  * 
- * Last updated: 10/22/2024
+ * Last updated: 6/11/2025
  * 
  * Runtime: 2m
  * 
@@ -49,37 +50,38 @@ var export_Bool = true; // true/false.
 
 
 /*******************************************************************************
- * 1) Merge the complete modeling results of 
- *    all response variables. *
+ * 1) Merge the results of globally trained and locally tested
+ *    complete models for all response variables. *
  ******************************************************************************/
 
 // Create an empty List to store the merging result.
-var completeModel_AllResponseVars_List = ee.List([]);
+var globalModels_AllResponseVars_List = ee.List([]);
 
 for (var responseVarID_Num = 0; responseVarID_Num < 14; 
   responseVarID_Num ++) {
 
-  // Determine the response variable.
+  // Determine the response variable name.
   var responseVarName_Str = 
     allResponseVarNames_List[responseVarID_Num];
   
-  // Load the result of complete modeling.
-  var completeModel_OneResponseVar_FC = ee.FeatureCollection(
+  // Load the global modeling result of one response variable.
+  var globalModel_OneResponseVar_FC = ee.FeatureCollection(
     wd_Main_1_Str
     + "GEDI_Estimation/"
     + "Model_Comparison/"
-    + "All_SelectedTiles/"
-    + responseVarName_Str + "_Complete"
+    + "GlobalModels_LocallyTested/"
+    + responseVarName_Str
+    + "_Complete"
   );
   
   // Add the loaded result to the List.
-  completeModel_AllResponseVars_List = completeModel_AllResponseVars_List
-    .add(completeModel_OneResponseVar_FC);
+  globalModels_AllResponseVars_List = globalModels_AllResponseVars_List
+    .add(globalModel_OneResponseVar_FC);
 }
 
 // Convert the merging result to a FeatureCollection.
-var completeModel_AllResponseVars_FC = ee.FeatureCollection(
-  completeModel_AllResponseVars_List
+var globalModels_AllResponseVars_FC = ee.FeatureCollection(
+  globalModels_AllResponseVars_List
 ).flatten();
 
 
@@ -90,22 +92,22 @@ var completeModel_AllResponseVars_FC = ee.FeatureCollection(
 if (!export_Bool) {
   
   // Check the dataset(s).
-  print("completeModel_AllResponseVars_FC:", 
-    completeModel_AllResponseVars_FC.size(), // 140 = 14 * 10.
-    completeModel_AllResponseVars_FC.first());
+  print("globalModels_AllResponseVars_FC:", 
+    globalModels_AllResponseVars_FC.size(), // 4200 = 14 * 10 * 30.
+    globalModels_AllResponseVars_FC.first());
   
 } else {
   
   // Export the result(s).
-  var outputName_Str = "CompleteModel_AllResponseVars";
+  var outputName_Str = "globalModels_AllResponseVars";
   
   Export.table.toAsset({
-    collection: completeModel_AllResponseVars_FC, 
+    collection: globalModels_AllResponseVars_FC, 
     description: outputName_Str, 
     assetId: wd_Main_1_Str
       + "GEDI_Estimation/"
       + "Model_Comparison/"
-      + "All_SelectedTiles/"
+      + "GlobalModels_LocallyTested/"
       + outputName_Str
   });
 }

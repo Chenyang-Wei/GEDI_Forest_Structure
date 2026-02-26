@@ -3,9 +3,9 @@
  * 
  *  1) Visualize the results of hyperparameter tuning.
  * 
- * Last updated: 10/9/2024
+ * Last updated: 10/14/2025
  * 
- * Runtime: N/A
+ * Runtime: <1m ~ 30m
  * 
  * Author: Chenyang Wei (chenyangwei.cwei@gmail.com)
  ******************************************************************************/
@@ -118,122 +118,144 @@ var optimalHPvalues_AllVars_FC = ee.FeatureCollection(
   + "Hyperparameter_Tuning/"
   + "All_OptimalHPvalues");
 
+// Whether to export the optimal hyperparameter values.
+var export_Bool = false; // true OR false.
 
-/*******************************************************************************
- * 1) Visualize the results of hyperparameter tuning. *
- ******************************************************************************/
-
-// Select a response variable.
-// var responseVarName_Str = "fhd_normal";
-var responseVarName_Str = "cover";
-
-var responseVar_Filter = ee.Filter.eq("Response_Var", 
-  responseVarName_Str);
-
-// Identify the corresponding testing results and optimal values.
-var testingResults_AllRounds_FC = final_TestingResults_FC
-  .filter(responseVar_Filter);
-
-var optimalHPvalues_AllRounds_FC = optimalHPvalues_AllVars_FC
-  .filter(
-    ee.Filter.and(
-      responseVar_Filter,
-      ee.Filter.eq("Tuning_ID", 2)
-    )
-  );
-
-
-/****** Making a Chart for each tuning outcome. ******/
-
-/**** Round 1. ****/
-
-var colors1_List = ["ca0020", "0571b0"];
-var colors2_List = ["e66101", "5e3c99"];
-var colors3_List = ["7b3294", "008837"];
-
-// Variables Per Split.
-Visualize_HPvalues(1, 
-  "variablesPerSplit", "Variables Per Split", 
-  colors1_List);
-
-Visualize_HPvalues(2, 
-  "variablesPerSplit", "Variables Per Split", 
-  colors1_List);
-
-Visualize_HPvalues(3, 
-  "variablesPerSplit", "Variables Per Split", 
-  colors1_List);
-
-// Min. Leaf Population.
-Visualize_HPvalues(1, 
-  "minLeafPopulation", "Min. Leaf Population", 
-  colors2_List);
-
-Visualize_HPvalues(2, 
-  "minLeafPopulation", "Min. Leaf Population", 
-  colors2_List);
-
-Visualize_HPvalues(3, 
-  "minLeafPopulation", "Min. Leaf Population", 
-  colors2_List);
-
-// Bagging Fraction.
-Visualize_HPvalues(1, 
-  "bagFraction", "Bagging Fraction", 
-  colors3_List);
-
-Visualize_HPvalues(2, 
-  "bagFraction", "Bagging Fraction", 
-  colors3_List);
-
-Visualize_HPvalues(3, 
-  "bagFraction", "Bagging Fraction", 
-  colors3_List);
-
-
-/*******************************************************************************
-* Results *
-******************************************************************************/
-
-// Whether to display the optimal hyperparameter values.
-var display_Bool = true; // true OR false.
-
-if (display_Bool) {
+if (!export_Bool) {
   
-  // Check the object(s) and dataset(s).
+  /*******************************************************************************
+   * 1) Visualize the results of hyperparameter tuning. *
+   ******************************************************************************/
   
-  var testingResults_FC = testingResults_AllRounds_FC
-    .filter(ee.Filter.and(
-      ee.Filter.eq("Round_ID", 3),
-      ee.Filter.eq("Tuning_ID", 2),
-      ee.Filter.eq("HP_Name", "bagFraction")
-    ));
+  // Select a response variable.
+  // var responseVarName_Str = "fhd_normal";
+  var responseVarName_Str = "cover";
   
-  print("variablesPerSplit",
-    optimalHPvalues_AllVars_FC
-      .filter(ee.Filter.and(
-        ee.Filter.eq("Round_ID", 3),
-        ee.Filter.eq("Tuning_ID", 2),
-        ee.Filter.eq("HP_Name", "variablesPerSplit")
-      ))
-      .aggregate_array("HP_Value"));
-
-  print("minLeafPopulation",
-    optimalHPvalues_AllVars_FC
-      .filter(ee.Filter.and(
-        ee.Filter.eq("Round_ID", 3),
-        ee.Filter.eq("Tuning_ID", 2),
-        ee.Filter.eq("HP_Name", "minLeafPopulation")
-      ))
-      .aggregate_array("HP_Value"));
+  var responseVar_Filter = ee.Filter.eq("Response_Var", 
+    responseVarName_Str);
   
-  print("bagFraction",
-    optimalHPvalues_AllVars_FC
+  // Identify the corresponding testing results and optimal values.
+  var testingResults_AllRounds_FC = final_TestingResults_FC
+    .filter(responseVar_Filter);
+  
+  var optimalHPvalues_AllRounds_FC = optimalHPvalues_AllVars_FC
+    .filter(
+      ee.Filter.and(
+        responseVar_Filter,
+        ee.Filter.eq("Tuning_ID", 2)
+      )
+    );
+  
+  
+  /****** Making a Chart for each tuning outcome. ******/
+  
+  /**** Round 1. ****/
+  
+  var colors1_List = ["ca0020", "0571b0"];
+  var colors2_List = ["e66101", "5e3c99"];
+  var colors3_List = ["7b3294", "008837"];
+  
+  // Variables Per Split.
+  Visualize_HPvalues(1, 
+    "variablesPerSplit", "Variables Per Split", 
+    colors1_List);
+  
+  Visualize_HPvalues(2, 
+    "variablesPerSplit", "Variables Per Split", 
+    colors1_List);
+  
+  Visualize_HPvalues(3, 
+    "variablesPerSplit", "Variables Per Split", 
+    colors1_List);
+  
+  // Min. Leaf Population.
+  Visualize_HPvalues(1, 
+    "minLeafPopulation", "Min. Leaf Population", 
+    colors2_List);
+  
+  Visualize_HPvalues(2, 
+    "minLeafPopulation", "Min. Leaf Population", 
+    colors2_List);
+  
+  Visualize_HPvalues(3, 
+    "minLeafPopulation", "Min. Leaf Population", 
+    colors2_List);
+  
+  // Bagging Fraction.
+  Visualize_HPvalues(1, 
+    "bagFraction", "Bagging Fraction", 
+    colors3_List);
+  
+  Visualize_HPvalues(2, 
+    "bagFraction", "Bagging Fraction", 
+    colors3_List);
+  
+  Visualize_HPvalues(3, 
+    "bagFraction", "Bagging Fraction", 
+    colors3_List);
+  
+  
+  /*******************************************************************************
+  * Results *
+  ******************************************************************************/
+  
+  // Whether to display the optimal hyperparameter values.
+  var display_Bool = true; // true OR false.
+  
+  if (display_Bool) {
+    
+    // Check the object(s) and dataset(s).
+    
+    var testingResults_FC = testingResults_AllRounds_FC
       .filter(ee.Filter.and(
         ee.Filter.eq("Round_ID", 3),
         ee.Filter.eq("Tuning_ID", 2),
         ee.Filter.eq("HP_Name", "bagFraction")
-      ))
-      .aggregate_array("HP_Value"));
+      ));
+    
+    print("variablesPerSplit",
+      optimalHPvalues_AllVars_FC
+        .filter(ee.Filter.and(
+          ee.Filter.eq("Round_ID", 3),
+          ee.Filter.eq("Tuning_ID", 2),
+          ee.Filter.eq("HP_Name", "variablesPerSplit")
+        ))
+        .aggregate_array("HP_Value"));
+  
+    print("minLeafPopulation",
+      optimalHPvalues_AllVars_FC
+        .filter(ee.Filter.and(
+          ee.Filter.eq("Round_ID", 3),
+          ee.Filter.eq("Tuning_ID", 2),
+          ee.Filter.eq("HP_Name", "minLeafPopulation")
+        ))
+        .aggregate_array("HP_Value"));
+    
+    print("bagFraction",
+      optimalHPvalues_AllVars_FC
+        .filter(ee.Filter.and(
+          ee.Filter.eq("Round_ID", 3),
+          ee.Filter.eq("Tuning_ID", 2),
+          ee.Filter.eq("HP_Name", "bagFraction")
+        ))
+        .aggregate_array("HP_Value"));
+  }
+
+} else {
+  
+  // Output to Drive.
+  Export.table.toDrive({
+    collection: final_TestingResults_FC, 
+    description: "HyperparameterTuning_AllVars", 
+    folder: "HyperparameterTuning_AllVars", 
+    fileFormat: "SHP"
+  });
+  
+  Export.table.toDrive({
+    collection: optimalHPvalues_AllVars_FC, 
+    description: "OptimalHyperparameters_AllVars", 
+    folder: "OptimalHyperparameters_AllVars", 
+    fileFormat: "SHP"
+  });
 }
 

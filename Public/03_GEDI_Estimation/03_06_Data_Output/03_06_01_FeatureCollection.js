@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) Output FeatureCollections of interest to Google Drive
+ *  1) Output the FeatureCollection(s) of interest to Google Drive.
  * 
- * Last updated: 11/11/2024
+ * Last updated: 6/27/2025
  * 
- * Runtime: <1m ~ 10m
+ * Runtime: 40m
  * 
  * Author: Chenyang Wei (chenyangwei.cwei@gmail.com)
  ******************************************************************************/
@@ -47,11 +47,11 @@ var wd_Main_4_Str = ENA_mod.wd_Birds_Str;
  * Datasets *
  ******************************************************************************/
 
-// Study area.
-var studyArea_FC = ee.FeatureCollection(
-  wd_Main_1_Str
-  + "Study_Domain/StudyArea_SelectedBCRs"
-);
+// // Study area.
+// var studyArea_FC = ee.FeatureCollection(
+//   wd_Main_1_Str
+//   + "Study_Domain/StudyArea_SelectedBCRs"
+// );
 
 // // Randomly collected samples.
 // var collectedSamples_FC = ee.FeatureCollection(
@@ -60,94 +60,170 @@ var studyArea_FC = ee.FeatureCollection(
 //   + "CollectedSamples_10perCell"
 // );
 
-// Tiles (60 km).
-var tiles_FC = ee.FeatureCollection(
-  wd_Main_1_Str
-  + "Study_Domain/"
-  + "Tiles_60km");
+// // Tiles (60 km).
+// var tiles_FC = ee.FeatureCollection(
+//   wd_Main_1_Str
+//   + "Study_Domain/"
+//   + "Tiles_60km");
 
-// Grid cells (30 km).
-var gridCells_FC = ee.FeatureCollection(
-  wd_Main_1_Str
-  + "Study_Domain/"
-  + "GridCells_30km");
+// // Grid cells (30 km).
+// var gridCells_FC = ee.FeatureCollection(
+//   wd_Main_1_Str
+//   + "Study_Domain/"
+//   + "GridCells_30km");
 
-// Selected tiles.
-var selectedTiles_FC = ee.FeatureCollection(
-  wd_Main_2_Str
-  + "GEDI_Estimation/"
-  + "Tiles_60km/"
-  + "Selected_Tiles");
+// // Selected tiles.
+// var selectedTiles_FC = ee.FeatureCollection(
+//   wd_Main_2_Str
+//   + "GEDI_Estimation/"
+//   + "Tiles_60km/"
+//   + "Selected_Tiles");
 
-// Selected grid cells.
-var selectedGridCells_FC = ee.FeatureCollection(
-  wd_Main_2_Str
-  + "GEDI_Estimation/"
-  + "Tiles_60km/"
-  + "Selected_GridCells");
+// // Selected grid cells.
+// var selectedGridCells_FC = ee.FeatureCollection(
+//   wd_Main_2_Str
+//   + "GEDI_Estimation/"
+//   + "Tiles_60km/"
+//   + "Selected_GridCells");
 
-// Predictor analysis tiles.
-var predictorAnalysisTiles_FC = ee.FeatureCollection(
-  wd_Main_3_Str
-  + "GEDI_Estimation/"
-  + "Predictor_Comparison/"
-  + "NonOverlapping_Tiles");
+// // Predictor analysis tiles.
+// var predictorAnalysisTiles_FC = ee.FeatureCollection(
+//   wd_Main_3_Str
+//   + "GEDI_Estimation/"
+//   + "Predictor_Comparison/"
+//   + "NonOverlapping_Tiles");
 
-// Accuracy assessment results.
-var accuracy_AllVars_FC = ee.FeatureCollection(
-  wd_Main_4_Str
-  + "GEDI_Estimation/"
-  + "Accuracy_AllResponseVars");
+// // Accuracy assessment results.
+// var accuracy_AllVars_FC = ee.FeatureCollection(
+//   wd_Main_4_Str
+//   + "GEDI_Estimation/"
+//   + "Accuracy_AllResponseVars");
 
-// Load the aggregated result of predictor's contribution comparison.
-var aggregated_AllTiles_FC = ee.FeatureCollection(
-  wd_Main_3_Str
-  + "GEDI_Estimation/"
-  + "Predictor_Comparison/"
-  + "Modeling_Results/"
-  + "ModelComparison_Aggregated"
-);
+// // Load the aggregated result of predictor's contribution comparison.
+// var aggregated_AllTiles_FC = ee.FeatureCollection(
+//   wd_Main_3_Str
+//   + "GEDI_Estimation/"
+//   + "Predictor_Comparison/"
+//   + "Modeling_Results/"
+//   + "ModelComparison_Aggregated"
+// );
 
-var oldNames_List = aggregated_AllTiles_FC
-  .select(
-    ["Mean_.*", "SD_.*"]
-  )
-  .first().propertyNames()
-  .remove("system:index");
+// var oldNames_List = aggregated_AllTiles_FC
+//   .select(
+//     ["Mean_.*", "SD_.*"]
+//   )
+//   .first().propertyNames()
+//   .remove("system:index");
 
-var newNames_List = oldNames_List
-  .map(
-    function Rename(oldName_Str) {
+// var newNames_List = oldNames_List
+//   .map(
+//     function Rename(oldName_Str) {
       
-      oldName_Str = ee.String(oldName_Str);
+//       oldName_Str = ee.String(oldName_Str);
       
-      var firstLetter_Str = oldName_Str.slice(0, 1);
+//       var firstLetter_Str = oldName_Str.slice(0, 1);
       
-      var secondPart_Str = oldName_Str.slice(
-        oldName_Str.index("R")
-      );
+//       var secondPart_Str = oldName_Str.slice(
+//         oldName_Str.index("R")
+//       );
       
-      return firstLetter_Str.cat("_").cat(secondPart_Str);
-    }
-  );
+//       return firstLetter_Str.cat("_").cat(secondPart_Str);
+//     }
+//   );
 
-oldNames_List = oldNames_List.cat(["Response_Var", "Tile_ID"]);
-newNames_List = newNames_List.cat(["Response_Var", "Tile_ID"]);
+// oldNames_List = oldNames_List.cat(["Response_Var", "Tile_ID"]);
+// newNames_List = newNames_List.cat(["Response_Var", "Tile_ID"]);
 
 // print(oldNames_List);
 // print(newNames_List);
 
-aggregated_AllTiles_FC = aggregated_AllTiles_FC
-  .select(oldNames_List, newNames_List);
+// aggregated_AllTiles_FC = aggregated_AllTiles_FC
+//   .select(oldNames_List, newNames_List);
 
-// Global modeling results of all response variables.
-var global_AllVars_FC = ee.FeatureCollection(
-  wd_Main_3_Str
+// // Global modeling results of all response variables.
+// var global_AllVars_FC = ee.FeatureCollection(
+//   wd_Main_3_Str
+//   + "GEDI_Estimation/"
+//   + "Model_Comparison/"
+//   + "All_SelectedTiles/"
+//   + "CompleteModel_Aggregated"
+// );
+
+// // Aggregated local testing results of global models.
+// var aggregated_LocalTesting_FC = ee.FeatureCollection(
+//   wd_Main_3_Str
+//   + "GEDI_Estimation/"
+//   + "Model_Comparison/"
+//   + "GlobalModels_LocallyTested/"
+//   + "globalModels_Aggregated"
+// );
+
+// // Raw local testing results of global models.
+// var raw_LocalTesting_FC = ee.FeatureCollection(
+//   wd_Main_3_Str
+//   + "GEDI_Estimation/"
+//   + "Model_Comparison/"
+//   + "GlobalModels_LocallyTested/"
+//   + "globalModels_AllResponseVars"
+// );
+
+// // Local model comparison results of all drawings.
+// var localModelComparison_AllTiles_FC = ee.FeatureCollection(
+//   wd_Main_3_Str
+//   + "GEDI_Estimation/"
+//   + "Predictor_Comparison/"
+//   + "Modeling_Results/"
+//   + "ModelComparison_10drawings"
+// ).select([
+//   "Response_Var",
+//   "Tile_ID",
+//   "Drawing_ID",
+//   "R_squared",
+//   "RMSE"
+// ]);
+
+// Randomly collected samples of 10 drawings from all 30 tiles.
+//   (splitted into "training" and "testing" subsets.)
+var allTileSamples_AllDrawings_FC = ee.FeatureCollection(
+  ENA_mod.wd_FU_Str
   + "GEDI_Estimation/"
-  + "Model_Comparison/"
-  + "All_SelectedTiles/"
-  + "CompleteModel_Aggregated"
+  + "Predictor_Comparison/"
+  + "SplittedSamples_10drawings"
 );
+
+// Select the properties of interest.
+var propertyNames_List = [
+  "RHD_25to50",
+  "RHD_50to75",
+  "RHD_75to98",
+  "rh98",
+  "cover",
+  "pai",
+  "fhd_normal",
+  "PAVD_0_10m",
+  "PAVD_10_20m",
+  "PAVD_20_30m",
+  "PAVD_30_40m",
+  "PAVD_40_50m",
+  "PAVD_50_60m",
+  "PAVD_over60m",
+  ".*ID",
+  "Category"
+];
+
+allTileSamples_AllDrawings_FC = allTileSamples_AllDrawings_FC
+  .select(propertyNames_List);
+
+
+/*******************************************************************************
+ * 1) Determine the FeatureCollection(s) to output. *
+ ******************************************************************************/
+
+var outputData_1_FC = allTileSamples_AllDrawings_FC;
+var outputName_1_Str = "RandomSamples_30tiles_10drawings";
+
+// var outputData_2_FC = selectedGridCells_FC;
+// var outputName_2_Str = "Selected_GridCells";
 
 
 /*******************************************************************************
@@ -159,80 +235,25 @@ var export_Bool = true; // true/false.
 
 if (!export_Bool) {
   
-  /****** Check the dataset(s) and object(s). ******/
+  /****** Check the dataset(s) and object(s) of interest. ******/
   
-  print("studyArea_FC:",
-    studyArea_FC.first(),
-    studyArea_FC.size());
-  
-  // print("collectedSamples_FC:",
-  //   collectedSamples_FC.first(),
-  //   collectedSamples_FC.size()); // 16930.
-  
-  print("aggregated_AllTiles_FC:",
-    aggregated_AllTiles_FC.first(),
-    aggregated_AllTiles_FC.size()); // 420 = 14 * 30.
-  
-  print("global_AllVars_FC:",
-    global_AllVars_FC.first(),
-    global_AllVars_FC.size()); // 14.
+  print("outputData_1_FC:",
+    outputData_1_FC.first(),
+    outputData_1_FC.size());
   
   // Visualization.
   Map.setOptions("Satellite");
-  Map.centerObject(AOI_Geom, 8);
+  Map.centerObject(AOI_Geom, 6);
   
-  Map.addLayer(AOI_Geom, 
-    {
-      color: "FFFFFF"
-    }, 
-    "AOI_Geom");
-
-  Map.addLayer(studyArea_FC, 
-    {
-      color: "FF0000"
-    }, 
-    "studyArea_FC");
-
-  Map.addLayer(selectedTiles_FC, 
-    {
-      color: "00FFFF"
-    }, 
-    "selectedTiles_FC");
-
-  Map.addLayer(selectedGridCells_FC, 
-    {
-      color: "0000FF"
-    }, 
-    "selectedGridCells_FC");
-
-  Map.addLayer(accuracy_AllVars_FC, 
-    {
-      color: "228B22"
-    }, 
-    "accuracy_AllVars_FC");
-
-  Map.addLayer(predictorAnalysisTiles_FC, 
-    {
-      color: "00FF00"
-    }, 
-    "predictorAnalysisTiles_FC",
-    true);
-
-  // Map.addLayer(collectedSamples_FC, 
+  // Map.addLayer(AOI_Geom, 
   //   {
-  //     color: "00FFFF"
+  //     color: "FFFFFF"
   //   }, 
-  //   "collectedSamples_FC",
-  //   false);
+  //   "AOI_Geom");
 
 } else {
   
   /****** Export the result(s). ******/
-  
-  // Select FeatureCollections to output.
-  
-  var outputData_1_FC = aggregated_AllTiles_FC;
-  var outputName_1_Str = "ModelComparison_Aggregated";
   
   Export.table.toDrive({
     collection: outputData_1_FC, 
@@ -240,9 +261,6 @@ if (!export_Bool) {
     folder: outputName_1_Str, 
     fileFormat: "SHP"
   });
-  
-  // var outputData_2_FC = selectedGridCells_FC;
-  // var outputName_2_Str = "Selected_GridCells";
   
   // Export.table.toDrive({
   //   collection: outputData_2_FC, 

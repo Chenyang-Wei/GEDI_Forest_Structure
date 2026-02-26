@@ -4,9 +4,9 @@
  *  1) Display the modeling result of each tree number
  *     for each response variable. 
  * 
- * Last updated: 10/9/2024
+ * Last updated: 10/13/2025
  * 
- * Runtime: N/A
+ * Runtime: 3m
  * 
  * Author: Chenyang Wei (chenyangwei.cwei@gmail.com)
  ******************************************************************************/
@@ -57,68 +57,86 @@ var modelingResults_AllVars_FC = ee.FeatureCollection(
  *    for each response variable. *
  ******************************************************************************/
 
-for (var responseVarID_Num = 0; responseVarID_Num < 14; 
-  responseVarID_Num ++) {
+// Whether to export the results.
+var export_Bool = true; // true OR false.
 
-  // Determine the response variable.
-  var responseVarName_Str = 
-    allResponseVarNames_List[responseVarID_Num];
+if (!export_Bool) {
   
-  // Identify the modeling results of the response variable.
-  var modelingResults_OneVar_FC = modelingResults_AllVars_FC
-    .filter(ee.Filter.eq({
-      name: "Response_Var", 
-      value: responseVarName_Str
-    }));
+  for (var responseVarID_Num = 0; responseVarID_Num < 14; 
+    responseVarID_Num ++) {
   
-  
-  /*******************************************************************************
-   * Results *
-   ******************************************************************************/
-  
-  // Whether to display the results.
-  var visualize_Bool = true; // true OR false.
-  
-  if (visualize_Bool) {
-    var modelingResults_OneVar_Chart =
-      ui.Chart.feature
-        .byFeature({
-          features: modelingResults_OneVar_FC, 
-          xProperty: "Tree_Number", 
-          yProperties: ["RMSE"]
-        })
-        .setChartType("ScatterChart")
-        .setOptions({
-          title: responseVarName_Str,
-          titleTextStyle: {
-            italic: true, 
-            bold: true
-          },
-          hAxis: {
-            title: "Number of Trees", 
-            titleTextStyle: {italic: false, bold: true}
-          },
-          vAxis: {
-            title: "RMSE",
-            titleTextStyle: {italic: false, bold: true}
-          },
-          fontSize: 32,
-          pointSize: 12,
-          colors: ["228B22"],
-          legend: {position: "none"}
-        });
+    // Determine the response variable.
+    var responseVarName_Str = 
+      allResponseVarNames_List[responseVarID_Num];
     
-    print(modelingResults_OneVar_Chart);
-    // As there is little change in RMSE between 100 and 200 trees,
-    //   the number of trees is set to 100.
+    // Identify the modeling results of the response variable.
+    var modelingResults_OneVar_FC = modelingResults_AllVars_FC
+      .filter(ee.Filter.eq({
+        name: "Response_Var", 
+        value: responseVarName_Str
+      }));
     
-  } else {
     
-    /****** Check the dataset(s) and object(s). ******/
+    /*******************************************************************************
+     * Results *
+     ******************************************************************************/
     
-    print(responseVarName_Str,
-      modelingResults_OneVar_FC.first(),
-      modelingResults_OneVar_FC.size()); // 41.
+    // Whether to display the results.
+    var visualize_Bool = true; // true OR false.
+    
+    if (visualize_Bool) {
+      var modelingResults_OneVar_Chart =
+        ui.Chart.feature
+          .byFeature({
+            features: modelingResults_OneVar_FC, 
+            xProperty: "Tree_Number", 
+            yProperties: ["RMSE"]
+          })
+          .setChartType("ScatterChart")
+          .setOptions({
+            title: responseVarName_Str,
+            titleTextStyle: {
+              italic: true, 
+              bold: true
+            },
+            hAxis: {
+              title: "Number of Trees", 
+              titleTextStyle: {italic: false, bold: true}
+            },
+            vAxis: {
+              title: "RMSE",
+              titleTextStyle: {italic: false, bold: true}
+            },
+            fontSize: 32,
+            pointSize: 12,
+            colors: ["228B22"],
+            legend: {position: "none"}
+          });
+      
+      print(modelingResults_OneVar_Chart);
+      // As there is little change in RMSE between 100 and 200 trees,
+      //   the number of trees is set to 100.
+      
+    } else {
+      
+      /****** Check the dataset(s) and object(s). ******/
+      
+      print(responseVarName_Str,
+        modelingResults_OneVar_FC.first(),
+        modelingResults_OneVar_FC.size()); // 41.
+    }
   }
+  
+} else {
+  
+  // Output to Drive.
+  var outputName_Str = "TreeNumberTuning_AllVars";
+  
+  Export.table.toDrive({
+    collection: modelingResults_AllVars_FC, 
+    description: outputName_Str, 
+    folder: outputName_Str, 
+    fileFormat: "SHP"
+  });
 }
 

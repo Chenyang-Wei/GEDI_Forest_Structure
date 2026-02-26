@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) Visualize the calculated weights of each selected tile.
+ *  1) Visualize the calculated weights of a given tile.
  * 
  *  2) Visualize the two types of composited results.
  * 
@@ -83,7 +83,7 @@ var selectedVarNames_List = [
 
 
 /*******************************************************************************
- * 1) Visualize the calculated weights. *
+ * 1) Visualize the calculated weights of a given tile. *
  ******************************************************************************/
 
 if (true) {

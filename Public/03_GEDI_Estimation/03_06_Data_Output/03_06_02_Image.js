@@ -8,7 +8,7 @@
  * 
  *  3) Export a few predictor variables at 300 m.
  * 
- * Last updated: 11/26/2024
+ * Last updated: 1/15/2025
  * 
  * Runtime: 
  *  1) Average: 5m ~ 12m; weighted average: 4m ~ 9m.

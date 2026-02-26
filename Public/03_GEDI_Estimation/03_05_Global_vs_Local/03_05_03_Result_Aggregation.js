@@ -1,11 +1,11 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) For each response variable, 
- *     aggregate the complete modeling results 
- *     of all 10 drawings.
+ *  1) For each tile and each response variable, 
+ *     aggregate the local testing results of global models
+ *     for all 10 drawings.
  * 
- * Last updated: 10/22/2024
+ * Last updated: 6/11/2025
  * 
  * Runtime: <1m
  * 
@@ -25,9 +25,6 @@ var ENA_mod = require(
  * Objects *
  ******************************************************************************/
 
-// Area of interest.
-var AOI_Geom = ENA_mod.AOI_Geom;
-
 // Major working directories.
 var wd_Main_1_Str = ENA_mod.wd_FU_Str;
 
@@ -39,28 +36,115 @@ var export_Bool = true; // true/false.
  * Functions *
  ******************************************************************************/
 
-// N/A.
+// To perform the aggregation by tile.
+function Aggregate_ByTile(tileID_Num) {
+  
+  var tileID_Filter = ee.Filter.eq({
+    name: "Tile_ID", 
+    value: tileID_Num
+  });
+  
+  // Derive a single tile.
+  var singleTile_Ftr = selectedTiles_FC
+    .filter(tileID_Filter)
+    .first();
+  
+  // Identify the local testing results of a single tile.
+  var testingResults_OneTile_AllVars_FC = testingResults_AllTiles_AllVars_FC
+    .filter(tileID_Filter);
+  
+  // Aggregate the properties of interest.
+  var aggregated_OneTile_AllVars_List = testingResults_OneTile_AllVars_FC
+    .reduceColumns({
+      reducer: meanSD_Reducer.repeat(
+        propertiesToAggregate_List.size()
+      ).group({
+        groupField: 0, 
+        groupName: "Response_V"
+      }), 
+      selectors: ee.List(["Response_V"])
+        .cat(propertiesToAggregate_List)
+        // Select the properties of interest.
+    }).get("groups");
+  
+  // Convert the aggregation result to a FeatureCollection.
+  aggregated_OneTile_AllVars_List = ee.List(aggregated_OneTile_AllVars_List)
+    .map(
+      function Convert_To_Feature(aggregated_OneTile_OneVar_Dict) {
+        
+        aggregated_OneTile_OneVar_Dict = ee.Dictionary(
+          aggregated_OneTile_OneVar_Dict
+        );
+        
+        // Extract the response variable name.
+        var responseVar_Str = aggregated_OneTile_OneVar_Dict
+          .getString("Response_V");
+        
+        // Convert the mean List to a Dictionary.
+        var mean_Values_List = aggregated_OneTile_OneVar_Dict
+          .get("mean");
+        
+        var mean_Properties_Dict = ee.Dictionary.fromLists({
+          keys: mean_Names_List, 
+          values: mean_Values_List
+        });
+        
+        // Convert the SD List to a Dictionary.
+        var sd_Values_List = aggregated_OneTile_OneVar_Dict
+          .get("stdDev");
+        
+        var sd_Properties_Dict = ee.Dictionary.fromLists({
+          keys: sd_Names_List, 
+          values: sd_Values_List
+        });
+        
+        var aggregated_OneTile_OneVar_Ftr = singleTile_Ftr
+          .set({
+            Response_V: responseVar_Str
+          })
+          .set(mean_Properties_Dict)
+          .set(sd_Properties_Dict);
+        
+        return aggregated_OneTile_OneVar_Ftr;
+      }
+    );
+  
+  var aggregated_OneTile_AllVars_FC = ee.FeatureCollection(
+    aggregated_OneTile_AllVars_List
+  );
+  
+  return aggregated_OneTile_AllVars_FC;
+}
 
 
 /*******************************************************************************
  * Datasets *
  ******************************************************************************/
 
-// Complete modeling results of all response variables.
-var completeModel_FC = ee.FeatureCollection(
+// Selected non-overlapping tiles.
+var selectedTiles_FC = ee.FeatureCollection(
+  wd_Main_1_Str
+  + "GEDI_Estimation/"
+  + "Predictor_Comparison/"
+  + "NonOverlapping_Tiles")
+  .select(["Tile_ID"]);
+
+// Local testing results of all 30 tiles and 
+//   all 14 response variables.
+var testingResults_AllTiles_AllVars_FC = ee.FeatureCollection(
   wd_Main_1_Str
   + "GEDI_Estimation/"
   + "Model_Comparison/"
-  + "All_SelectedTiles/"
-  + "CompleteModel_AllResponseVars"
+  + "GlobalModels_LocallyTested/"
+  + "globalModels_AllResponseVars"
 );
 
 
 /*******************************************************************************
- * 1) For each response variable, 
- *    aggregate the complete modeling results 
- *    of all 10 drawings. *
- ******************************************************************************/
+* 1) For each tile and each response variable, 
+*    aggregate the local testing results of global models
+*    for all 10 drawings. *
+******************************************************************************/
 
 // Determine a List of properties to aggregate.
 var propertiesToAggregate_List = ee.List([
@@ -76,78 +160,30 @@ var meanSD_Reducer = ee.Reducer.mean()
   });
 
 // Determine names of the aggregated properties.
-var mean_Names_List = propertiesToAggregate_List.map(
-  function Rename_Means(propertyToAggregate_Str) {
-    
-    return ee.String("Mean_").cat(propertyToAggregate_Str);
-  }
+var mean_Names_List = ee.List([
+  "GloR2_mn",
+  "GloRMSE_mn"
+]);
+
+var sd_Names_List = ee.List([
+  "GloR2_sd",
+  "GloRMSE_sd"
+]);
+
+// Derive a List of the tile IDs.
+var tileIDs_List = selectedTiles_FC
+  .aggregate_array("Tile_ID")
+  .sort();
+
+// Aggregate the local testing results by tile.
+var aggregated_AllTiles_AllVars_List = tileIDs_List.map(
+  Aggregate_ByTile
 );
 
-var sd_Names_List = propertiesToAggregate_List.map(
-  function Rename_SDs(propertyToAggregate_Str) {
-    
-    return ee.String("SD_").cat(propertyToAggregate_Str);
-  }
-);
-
-// Aggregate the properties of interest for all 10 drawings.
-var aggregated_AllVars_List = completeModel_FC
-  .reduceColumns({
-    reducer: meanSD_Reducer.repeat(
-      propertiesToAggregate_List.size()
-    ).group({
-      groupField: 0, 
-      groupName: "Response_Var"
-    }), 
-    selectors: ee.List(["Response_Var"])
-      .cat(propertiesToAggregate_List)
-  }).get("groups");
-
-// Convert the aggregation result to a FeatureCollection.
-aggregated_AllVars_List = ee.List(aggregated_AllVars_List)
-  .map(
-    function Convert_To_Feature(aggregated_OneVar_Dict) {
-      
-      aggregated_OneVar_Dict = ee.Dictionary(
-        aggregated_OneVar_Dict
-      );
-      
-      // Extract the response variable name.
-      var responseVar_Str = aggregated_OneVar_Dict
-        .getString("Response_Var");
-      
-      // Convert the mean List to a Dictionary.
-      var mean_Values_List = aggregated_OneVar_Dict
-        .get("mean");
-      
-      var mean_Properties_Dict = ee.Dictionary.fromLists({
-        keys: mean_Names_List, 
-        values: mean_Values_List
-      });
-      
-      // Convert the SD List to a Dictionary.
-      var sd_Values_List = aggregated_OneVar_Dict
-        .get("stdDev");
-      
-      var sd_Properties_Dict = ee.Dictionary.fromLists({
-        keys: sd_Names_List, 
-        values: sd_Values_List
-      });
-      
-      var aggregated_OneVar_Ftr = ee.Feature(AOI_Geom)
-        .set({
-          Response_Var: responseVar_Str
-        })
-        .set(mean_Properties_Dict)
-        .set(sd_Properties_Dict);
-      
-      return aggregated_OneVar_Ftr;
-    }
-  );
-
-var aggregated_AllVars_FC = ee.FeatureCollection(
-  aggregated_AllVars_List
-);
+// Convert the aggregation results to a FeatureCollection.
+var aggregated_AllTiles_AllVars_FC = ee.FeatureCollection(
+  aggregated_AllTiles_AllVars_List
+).flatten();
 
 
 /*******************************************************************************
@@ -156,7 +192,7 @@ var aggregated_AllVars_FC = ee.FeatureCollection(
 
 if (!export_Bool) {
   
-  // Check the dataset(s).
+  // Check the object(s) and dataset(s) of interest.
   print(
     "propertiesToAggregate_List:",
     propertiesToAggregate_List,
@@ -167,31 +203,30 @@ if (!export_Bool) {
   );
 
   print(
-    "completeModel_FC:", 
-    completeModel_FC.size(), // 140 = 14 * 10.
-    completeModel_FC.first()
+    "testingResults_AllTiles_AllVars_FC:", 
+    testingResults_AllTiles_AllVars_FC.size(), // 4200 = 14 * 30 * 10.
+    testingResults_AllTiles_AllVars_FC.first()
   );
   
   print(
-    "aggregated_AllVars_FC:",
-    aggregated_AllVars_FC.size(), // 14.
-    aggregated_AllVars_FC.first()
+    "aggregated_AllTiles_AllVars_FC:",
+    aggregated_AllTiles_AllVars_FC.size(), // 420 = 14 * 30.
+    aggregated_AllTiles_AllVars_FC.first()
   );
 
 } else {
   
   // Export the result(s).
-  var outputName_Str = "CompleteModel_Aggregated";
+  var outputName_Str = "globalModels_Aggregated";
   
   Export.table.toAsset({
-    collection: aggregated_AllVars_FC, 
+    collection: aggregated_AllTiles_AllVars_FC, 
     description: outputName_Str, 
     assetId: wd_Main_1_Str
       + "GEDI_Estimation/"
       + "Model_Comparison/"
-      + "All_SelectedTiles/"
+      + "GlobalModels_LocallyTested/"
       + outputName_Str
   });
 }
-
 

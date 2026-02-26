@@ -1,13 +1,16 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) For all the selected non-overlapping tiles, 
- *     train and test Random Forest models for each drawing
+ *  1) For all the selected non-overlapping 30 tiles, 
+ *     train global Random Forest models for each drawing
  *     based on all the predictor variables.
  * 
- * Last updated: 10/21/2024
+ *  2) Locally test each global RF model against the testing dataset
+ *     at each tile for the corresponding drawing.
  * 
- * Runtime: 4m ~ 11m
+ * Last updated: 6/10/2025
+ * 
+ * Runtime: 3m ~ 7m
  * 
  * Author: Chenyang Wei (chenyangwei.cwei@gmail.com)
  ******************************************************************************/
@@ -55,39 +58,6 @@ var allResponseVarNames_List =
 // Last round of tuning.
 var lastRoundID_Num = 3;
 
-// Number of the top-ranked predictors in each RF model.
-var topVarNumber_Num = 20;
-
-// Property names for the top-ranked predictors and their importance.
-var topVarIDs_List = ee.List.sequence({
-  start: 1, 
-  end: topVarNumber_Num
-});
-
-var topVarNames_List = topVarIDs_List.map(
-  function Create_VarName(topVarID_Num) {
-    topVarID_Num = ee.Number(topVarID_Num).toInt();
-    
-    var topVarID_Str = ee.String(topVarID_Num);
-    
-    var topVarName_Str = ee.String("Var").cat(topVarID_Str)
-      .cat("_Name");
-    
-    return topVarName_Str;
-  });
-
-var topVarImportance_List = topVarIDs_List.map(
-  function Create_VarImportance(topVarID_Num) {
-    topVarID_Num = ee.Number(topVarID_Num).toInt();
-    
-    var topVarID_Str = ee.String(topVarID_Num);
-    
-    var topVarImportance_Str = ee.String("Var").cat(topVarID_Str)
-      .cat("_Importance");
-    
-    return topVarImportance_Str;
-  });
-
 // Whether to export the result(s).
 var export_Bool = true; // true/false.
 
@@ -96,27 +66,27 @@ var export_Bool = true; // true/false.
  * Functions *
  ******************************************************************************/
 
-// Perform RF modeling by drawing.
-function RFmodeling_ByDrawing(drawingID_Num) {
+// Perform RF model training and tile-level testing by drawing.
+function RFmodeling_LocalTesting_ByDrawing(drawingID_Num) {
   
   // Derive a randomization seed.
   var randomSeed_Num = ee.Number(drawingID_Num)
     .multiply(responseVarID_Num + 1);
 
   // Identify the training/testing GEDI samples collected in each drawing.
-  var collectedSamples_OneDrawing_FC = collectedSamples_AllDrawings_FC
+  var allTileSamples_OneDrawing_FC = allTileSamples_AllDrawings_FC
     .filter(ee.Filter.eq({
       name: "Drawing_ID", 
       value: drawingID_Num
     }));
   
-  var trainingSamples_OneDrawing_FC = collectedSamples_OneDrawing_FC.filter(
+  var allTileTraining_OneDrawing_FC = allTileSamples_OneDrawing_FC.filter(
     ee.Filter.eq("Category", 1));
   
-  var testingSamples_OneDrawing_FC = collectedSamples_OneDrawing_FC.filter(
+  var allTileTesting_OneDrawing_FC = allTileSamples_OneDrawing_FC.filter(
     ee.Filter.eq("Category", 0));
   
-  // Train a RF Classifier based on the training samples.
+  // Train a RF Classifier based on the training samples from all 30 tiles.
   var randomForest_Classifier = 
     ee.Classifier.smileRandomForest({
       numberOfTrees: treeNum_Num,
@@ -129,127 +99,111 @@ function RFmodeling_ByDrawing(drawingID_Num) {
   
   randomForest_Classifier = randomForest_Classifier
     .train({
-      features: trainingSamples_OneDrawing_FC, 
+      features: allTileTraining_OneDrawing_FC, 
       classProperty: responseVarName_Str, 
       inputProperties: allPredictorNames_List
     }); 
   
-  // Apply the trained Classifier to the testing samples.
-  var testingResult_OneDrawing_FC = testingSamples_OneDrawing_FC
-    .classify({
-      classifier: randomForest_Classifier,
-      outputName: estimatedVarName_Str
-    });
-  
-  var responseVarMean_Num = testingResult_OneDrawing_FC
-    .reduceColumns({
-      reducer: ee.Reducer.mean(), 
-      selectors: [responseVarName_Str]
-    }).get("mean");
-  
-  // Calculate RMSE and R-squared.
-  testingResult_OneDrawing_FC = testingResult_OneDrawing_FC.map(
-    function(testingSample_Ftr) {
+  // Locally test the trained Classifier against 
+  //   the testing samples of each tile.
+  var allTileResults_OneDrawing_List = tileIDs_List.map(
+    function LocallyTest_GlobalModel_ByTile(tileID_Num) {
       
-      var actualValue_Num = testingSample_Ftr
-        .get(responseVarName_Str);
-        
-      var estimatedValue_Num = testingSample_Ftr
-        .get(estimatedVarName_Str);
-      
-      var squared_FitDiff_Num = ee.Number(actualValue_Num)
-        .subtract(estimatedValue_Num)
-        .pow(2);
-      
-      var squared_MeanDiff_Num = ee.Number(actualValue_Num)
-        .subtract(responseVarMean_Num)
-        .pow(2);
-      
-      return testingSample_Ftr.set({
-        Squared_FitDiff: squared_FitDiff_Num,
-        Squared_MeanDiff: squared_MeanDiff_Num
+      var tileID_Filter = ee.Filter.eq({
+        name: "Tile_ID", 
+        value: tileID_Num
       });
+      
+      // Select a single tile.
+      var oneTile_Ftr = selectedTiles_FC
+        .filter(tileID_Filter)
+        .first();
+      
+      // Extract the corresponding testing samples.
+      var oneTileTesting_OneDrawing_FC = allTileTesting_OneDrawing_FC
+        .filter(tileID_Filter);
+      
+      // Locally test the global model.
+      var oneTileResult_OneDrawing_FC = oneTileTesting_OneDrawing_FC
+        .classify({
+          classifier: randomForest_Classifier,
+          outputName: estimatedVarName_Str
+        });
+      
+      // Average the actual values of the response variable.
+      var responseVarMean_Num = oneTileResult_OneDrawing_FC
+        .reduceColumns({
+          reducer: ee.Reducer.mean(), 
+          selectors: [responseVarName_Str]
+        }).get("mean");
+      
+      // Calculate "squared error (SE)" and "squared total (ST)".
+      oneTileResult_OneDrawing_FC = oneTileResult_OneDrawing_FC.map(
+        function(testingSample_Ftr) {
+          
+          var actualValue_Num = testingSample_Ftr
+            .get(responseVarName_Str);
+            
+          var estimatedValue_Num = testingSample_Ftr
+            .get(estimatedVarName_Str);
+          
+          var squared_FitDiff_Num = ee.Number(actualValue_Num)
+            .subtract(estimatedValue_Num)
+            .pow(2);
+          
+          var squared_MeanDiff_Num = ee.Number(actualValue_Num)
+            .subtract(responseVarMean_Num)
+            .pow(2);
+          
+          return testingSample_Ftr.set({
+            Squared_FitDiff: squared_FitDiff_Num,
+            Squared_MeanDiff: squared_MeanDiff_Num
+          });
+        }
+      );
+      
+      // Calculate RMSE.
+      var MSE_Num = oneTileResult_OneDrawing_FC.reduceColumns({
+        reducer: ee.Reducer.mean(), 
+        selectors: ["Squared_FitDiff"]
+      }).get("mean");
+      
+      var RMSE_Num = ee.Number(MSE_Num).sqrt();
+      
+      // Calculate R-squared.
+      var SS_tot_Num = oneTileResult_OneDrawing_FC.reduceColumns({
+        reducer: ee.Reducer.sum(), 
+        selectors: ["Squared_MeanDiff"]
+      }).get("sum");
+      
+      var SS_res_Num = oneTileResult_OneDrawing_FC.reduceColumns({
+        reducer: ee.Reducer.sum(), 
+        selectors: ["Squared_FitDiff"]
+      }).get("sum");
+      
+      var R_squared_Num = ee.Number(1).subtract(
+        ee.Number(SS_res_Num).divide(SS_tot_Num)
+      );
+      
+      // Add the testing result to the single tile as properties.
+      var oneTile_WithResult_Ftr = oneTile_Ftr
+        .set({
+          Response_V: responseVarName_Str,
+          Drawing_ID: drawingID_Num,
+          RMSE: RMSE_Num,
+          R_squared: R_squared_Num
+        });
+      
+      return oneTile_WithResult_Ftr;
     }
   );
   
-  // RMSE.
-  var MSE_Num = testingResult_OneDrawing_FC.reduceColumns({
-    reducer: ee.Reducer.mean(), 
-    selectors: ["Squared_FitDiff"]
-  }).get("mean");
-  
-  var RMSE_Num = ee.Number(MSE_Num).sqrt();
-  
-  // R-squared.
-  var SS_tot_Num = testingResult_OneDrawing_FC.reduceColumns({
-    reducer: ee.Reducer.sum(), 
-    selectors: ["Squared_MeanDiff"]
-  }).get("sum");
-  
-  var SS_res_Num = testingResult_OneDrawing_FC.reduceColumns({
-    reducer: ee.Reducer.sum(), 
-    selectors: ["Squared_FitDiff"]
-  }).get("sum");
-  
-  var R_squared_Num = ee.Number(1).subtract(
-    ee.Number(SS_res_Num).divide(SS_tot_Num)
+  // Convert the result to a FeatureCollection.
+  var allTileResults_OneDrawing_FC = ee.FeatureCollection(
+    allTileResults_OneDrawing_List
   );
-  
-  // Acquire the importance of each predictor.
-  var importance_AllVars_Dict = ee.Dictionary(
-    randomForest_Classifier.explain()
-      .get("importance")
-  );
-  
-  // Convert the Dictionary to a FeatureCollection.
-  var importance_AllVars_List = allPredictorNames_List.map(
-    function Convert_Importance(predictorName_Str) {
-      var importance_OneVar_Num = importance_AllVars_Dict
-        .getNumber(predictorName_Str);
-      
-      return ee.Feature(null).set({
-        Var_Name: predictorName_Str,
-        Var_Importance: importance_OneVar_Num
-      });
-    });
-  
-  var importance_AllVars_FC = ee.FeatureCollection(
-    importance_AllVars_List
-  );
-  
-  // Identify the top-ranked predictors.
-  importance_AllVars_FC = importance_AllVars_FC.sort({
-    property: "Var_Importance", 
-    ascending: false
-  });
-  
-  var importance_TopVars_FC = importance_AllVars_FC
-    .limit(topVarNumber_Num);
-  
-  // Convert the names and importance of the top-ranked predictors
-  //   to Dictionaries.
-  var topVarNames_Dict = ee.Dictionary.fromLists({
-    keys: topVarNames_List, 
-    values: importance_TopVars_FC.aggregate_array("Var_Name")
-  });
-  
-  var topVarImportance_Dict = ee.Dictionary.fromLists({
-    keys: topVarImportance_List, 
-    values: importance_TopVars_FC.aggregate_array("Var_Importance")
-  });
-  
-  // Add all modeling results to the AOI as properties.
-  var AOI_WithResults_Ftr = ee.Feature(AOI_Geom)
-    .set({
-      Response_Var: responseVarName_Str,
-      Drawing_ID: drawingID_Num,
-      RMSE: RMSE_Num,
-      R_squared: R_squared_Num
-    })
-    .set(topVarNames_Dict)
-    .set(topVarImportance_Dict);
-  
-  return AOI_WithResults_Ftr;
+    
+  return allTileResults_OneDrawing_FC;
 }
 
 
@@ -257,21 +211,35 @@ function RFmodeling_ByDrawing(drawingID_Num) {
  * Datasets *
  ******************************************************************************/
 
-// Randomly collected samples of 10 drawings.
+// Selected non-overlapping tiles.
+var selectedTiles_FC = ee.FeatureCollection(
+  wd_Main_1_Str
+  + "GEDI_Estimation/"
+  + "Predictor_Comparison/"
+  + "NonOverlapping_Tiles");
+
+// Randomly collected samples of 10 drawings from all 30 tiles.
 //   (splitted into "training" and "testing".)
-var collectedSamples_AllDrawings_FC = ee.FeatureCollection(
+var allTileSamples_AllDrawings_FC = ee.FeatureCollection(
   wd_Main_1_Str
   + "GEDI_Estimation/"
   + "Predictor_Comparison/"
   + "SplittedSamples_10drawings"
 );
 
-// All the determined optimal values.
+// All the determined optimal hyperparameter values.
 var all_OptimalHPvalues_FC = ee.FeatureCollection(
   wd_Main_2_Str
   + "GEDI_Estimation/"
   + "Hyperparameter_Tuning/"
   + "All_OptimalHPvalues");
+
+
+/*******************************************************************************
+ * 1) For all the selected non-overlapping tiles, 
+ *    train and test Random Forest models for each drawing
+ *    based on all the predictor variables. *
+ ******************************************************************************/
 
 // Extract the optimal values from the last-round tuning.
 all_OptimalHPvalues_FC = all_OptimalHPvalues_FC
@@ -282,12 +250,13 @@ all_OptimalHPvalues_FC = all_OptimalHPvalues_FC
     )
   );
 
+// Determine a List of the selected tile IDs.
+selectedTiles_FC = selectedTiles_FC
+  .select([tileID_Name_Str]); // For the purpose of result export.
 
-/*******************************************************************************
- * 1) For all the selected non-overlapping tiles, 
- *    train and test Random Forest models for each drawing
- *    based on all the predictor variables. *
- ******************************************************************************/
+var tileIDs_List = selectedTiles_FC
+  .aggregate_array(tileID_Name_Str)
+  .sort();
 
 // Derive a List of the drawing IDs.
 var drawingIDs_List = ee.List.sequence({
@@ -336,14 +305,14 @@ for (var responseVarID_Num = 0; responseVarID_Num < 14;
       .first()
       .get("HP_Value");
 
-  // Variable estimation by tile.
+  // Perform global training and local testing.
   var accuracy_AllDrawings_List = drawingIDs_List
-    .map(RFmodeling_ByDrawing);
+    .map(RFmodeling_LocalTesting_ByDrawing);
   
   // Convert the result to a FeatureCollection.
   var accuracy_AllDrawings_FC = ee.FeatureCollection(
     accuracy_AllDrawings_List
-  );
+  ).flatten();
   
   
   /**** Export the results. ****/
@@ -359,7 +328,7 @@ for (var responseVarID_Num = 0; responseVarID_Num < 14;
       assetId: wd_Main_1_Str
         + "GEDI_Estimation/"
         + "Model_Comparison/"
-        + "All_SelectedTiles/"
+        + "GlobalModels_LocallyTested/"
         + accuracy_FileName_Str
     });
   }
@@ -373,13 +342,20 @@ for (var responseVarID_Num = 0; responseVarID_Num < 14;
 if (!export_Bool) {
   
   // Check the dataset(s).
-  print("collectedSamples_AllDrawings_FC:", 
-    collectedSamples_AllDrawings_FC.size(), // 375000.
-    collectedSamples_AllDrawings_FC.first()); // 116 properties.
+  print("allTileSamples_AllDrawings_FC:", 
+    allTileSamples_AllDrawings_FC.size(), // 375000.
+    allTileSamples_AllDrawings_FC.first()); // 116 properties.
 
   print("all_OptimalHPvalues_FC:", 
     all_OptimalHPvalues_FC.size(), // 42 = 14 * 3.
     all_OptimalHPvalues_FC.first());
+
+  print("selectedTiles_FC:", 
+    selectedTiles_FC.size(), // 30.
+    selectedTiles_FC.first());
+
+  print("tileIDs_List:", 
+    tileIDs_List);
 
   print("drawingIDs_List:", 
     drawingIDs_List);
