@@ -257,8 +257,7 @@ if (display_Bool) {
   // Visualization.
   Map.setOptions("Satellite");
   
-  // Map.centerObject(AOI_Geom, 8);
-  // Map.setCenter(-85.1405, 33.4444, 8);
+  Map.centerObject(AOI_Geom, 8);
   
   Map.addLayer(AOI_Geom, 
     {
@@ -313,15 +312,13 @@ if (display_Bool) {
     true,
     0.5);
 
-
   Map.addLayer(predictorAnalysisTiles_FC, 
     {
       color: "FFFFFF"
     }, 
     "predictorAnalysisTiles_FC",
     true,
-    1);
-  
+    1);  
 
   Map.addLayer(vectorizedSamples_FC, 
     {
@@ -359,107 +356,5 @@ if (display_Bool) {
       color: "228B22"
     }, 
     "Tile: " + 2037);
-  
-  // Map.addLayer(tiles_FC.filter(ee.Filter.eq("Tile_ID", 1064)), 
-  //   {
-  //     color: "00FF00"
-  //   }, 
-  //   "Tile: " + 1064);
-  
-  // Map.addLayer(tiles_FC.filter(ee.Filter.eq("Tile_ID", 746)), 
-  //   {
-  //     color: "0000FF"
-  //   }, 
-  //   "Tile: " + 746);
-  
-  // Map.addLayer(tiles_FC.filter(ee.Filter.eq("Tile_ID", 991)), 
-  //   {
-  //     color: "FF0000"
-  //   }, 
-  //   "Tile: " + 991);
-  
-  // Map.addLayer(tiles_FC.filter(ee.Filter.eq("Tile_ID", 1143)), 
-  //   {
-  //     color: "00FFFF"
-  //   }, 
-  //   "Tile: " + 1143);
-  
-  // Map.addLayer(leafTraits_Img.select("SLA"), // mm2/mg.
-  //   {
-  //     min: 7, 
-  //     max: 20, 
-  //     palette: PAL_mod.matplotlib.viridis[7]
-  //   }, 
-  //   "SLA", true);
-
-  // Map.addLayer(leafTraits_Img.select("LNC"), // mg/g.
-  //   {
-  //     min: 10, 
-  //     max: 21, 
-  //     palette: PAL_mod.matplotlib.magma[7]
-  //   }, 
-  //   "LNC", true);
-
-  // Map.addLayer(leafTraits_Img.select("LPC"), // mg/g.
-  //   {
-  //     min: 1.2, 
-  //     max: 1.8, 
-  //     palette: PAL_mod.matplotlib.plasma[7]
-  //   }, 
-  //   "LPC", true);
-
-  // Map.addLayer(leafTraits_Img.select("LDMC"), // g/g.
-  //   {
-  //     min: 0.28, 
-  //     max: 0.38, 
-  //     palette: PAL_mod.matplotlib.inferno[7]
-  //   }, 
-  //   "LDMC", true);
-  
-  // var ocdVis_Dict = {
-  //   min: 150, 
-  //   max: 800, 
-  //   palette: PAL_mod.matplotlib.viridis[7]
-  // };
-  
-  // Map.addLayer(soilProperties_Img.select("ocd_0-5cm_mean"), // dg/dm3.
-  //   ocdVis_Dict, 
-  //   "ocd_0-5cm_mean", true);
-
-  // Map.addLayer(soilProperties_Img.select("ocd_5-15cm_mean"), 
-  //   ocdVis_Dict, 
-  //   "ocd_5-15cm_mean", true);
-
-  // Map.addLayer(soilProperties_Img.select("ocd_15-30cm_mean"), 
-  //   ocdVis_Dict, 
-  //   "ocd_15-30cm_mean", true);
-
-  // Map.addLayer(soilProperties_Img.select("ocs_0-30cm_mean"), // t/ha.
-  //   {
-  //     min: 30, 
-  //     max: 120, 
-  //     palette: PAL_mod.matplotlib.magma[7]
-  //   }, 
-  //   "ocs_0-30cm_mean", true);
-
-  // Map.addLayer(nonWaterMask_GLC_Img,
-  //   {
-  //     palette: "FF0000"
-  //   }, 
-  //   "nonWaterMask_GLC_Img", true);
-
-  // Map.addLayer(nonWaterMask_ESRI_Img,
-  //   {
-  //     palette: "0000FF"
-  //   }, 
-  //   "nonWaterMask_ESRI_Img", true);
-
-  // Map.addLayer(nonWaterMask_ESRI_Img
-  //   .and(nonWaterMask_GLC_Img),
-  //   {
-  //     palette: "FFFFFF"
-  //   }, 
-  //   "nonWaterMask", false);
-
 }
 
