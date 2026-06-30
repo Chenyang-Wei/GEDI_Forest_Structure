@@ -1,6 +1,6 @@
 # GEDI-Inferred ForesT Structure (GIFTS)
 
-Google Earth Engine workflows for local prediction of temperate forest structure in eastern North America using NASA GEDI LiDAR, radar, optical, and auxiliary environmental data.
+Google Earth Engine workflows for GEDI-Inferred ForesT Structure (GIFTS): local prediction of temperate forest structure in eastern North America using NASA GEDI LiDAR, radar, optical, and auxiliary environmental data.
 
 This repository accompanies the following article:
 
@@ -10,7 +10,7 @@ This repository accompanies the following article:
 
 Forest structure is a key dimension of forest ecosystems, but field-based structural measurements are difficult to collect consistently across large regions. NASA's Global Ecosystem Dynamics Investigation (GEDI) mission provides spaceborne LiDAR observations of three-dimensional vegetation structure, but GEDI samples forests at discrete footprints rather than as continuous wall-to-wall maps.
 
-This project develops a local modeling framework to predict GEDI-derived forest structural metrics at 30-m resolution across temperate broadleaf and mixed forests of eastern North America. The workflow integrates GEDI Level 2A and Level 2B observations with optical, radar, topographic, land-cover, leaf-trait, and soil-property variables in Google Earth Engine. Local tile-specific random forest models are used to account for spatial nonstationarity in predictor–response relationships, and tile-level predictions are mosaicked into continuous regional outputs.
+The GEDI-Inferred ForesT Structure (GIFTS) project develops a local modeling framework to predict GEDI-derived forest structural metrics at 30-m resolution across temperate broadleaf and mixed forests of eastern North America. The workflow integrates GEDI Level 2A and Level 2B observations with optical, radar, topographic, land-cover, leaf-trait, and soil-property variables in Google Earth Engine. Local tile-specific random forest models are used to account for spatial nonstationarity in predictor–response relationships, and tile-level predictions are mosaicked into continuous regional outputs.
 
 The published study covers approximately 1.17 million km² of temperate broadleaf and mixed forests in eastern North America for 2019–2022. It predicts 11 GEDI-derived structural metrics, including canopy height, canopy cover, foliage height diversity, plant area index, relative height differences, and vertical plant area volume density metrics.
 
@@ -220,7 +220,7 @@ Large raster outputs and intermediate Earth Engine assets are not stored directl
 
 ## Interactive visualization
 
-An interactive Google Earth Engine web application for exploring the predicted forest structural metrics is available here:
+An interactive Google Earth Engine web application for visualizing and inspecting the 11 GEDI-Inferred ForesT Structure (GIFTS) metrics is available here:
 
 https://lidar-birds.projects.earthengine.app/view/gifts
 
@@ -288,7 +288,7 @@ If you use this repository, adapt the workflow, or use outputs derived from this
 You may also cite this GitHub repository when referencing the code implementation:
 
 ```text
-Wei, C. (2024-2026). GEDI_Forest_Structure: Google Earth Engine workflows for local prediction of temperate forest structure in eastern North America. GitHub. https://github.com/Chenyang-Wei/GEDI_Forest_Structure
+Wei, C. (2024-2026). GEDI-Inferred ForesT Structure (GIFTS): Google Earth Engine workflows for local prediction of temperate forest structure in eastern North America. GitHub. https://github.com/Chenyang-Wei/GEDI_Forest_Structure
 ```
 
 ## License
