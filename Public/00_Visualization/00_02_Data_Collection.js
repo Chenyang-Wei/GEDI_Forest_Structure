@@ -1,7 +1,8 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) Visualize collected predictor datasets.
+ *  1) Visualize selected tiles, samples, and
+ *     collected environmental predictor datasets.
  * 
  * Last updated: 9/29/2024
  * 
@@ -325,7 +326,6 @@ if (display_Bool) {
       max: 0.38, 
       palette: PAL_mod.matplotlib.inferno[7]
     }, 
-    "LDMC", true);
-  
+    "LDMC", true);  
 }
 
