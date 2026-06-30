@@ -1,8 +1,7 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) For the response variable of "FHD", 
- *     train and test Random Forest models by tile.
+ *  1) Visualize collected predictor datasets.
  * 
  * Last updated: 9/29/2024
  * 
