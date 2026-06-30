@@ -1,4 +1,4 @@
-# GEDI Forest Structure
+# GEDI-Inferred ForesT Structure (GIFTS)
 
 Google Earth Engine workflows for local prediction of temperate forest structure in eastern North America using NASA GEDI LiDAR, radar, optical, and auxiliary environmental data.
 
@@ -10,9 +10,9 @@ This repository accompanies the following article:
 
 Forest structure is a key dimension of forest ecosystems, but field-based structural measurements are difficult to collect consistently across large regions. NASA's Global Ecosystem Dynamics Investigation (GEDI) mission provides spaceborne LiDAR observations of three-dimensional vegetation structure, but GEDI samples forests at discrete footprints rather than as continuous wall-to-wall maps.
 
-This project develops a local modeling framework to predict GEDI-derived forest structural metrics at 30-m resolution across temperate broadleaf and mixed forests of eastern North America. The workflow integrates GEDI Level 2A and Level 2B observations with optical, radar, topographic, land-cover, leaf-trait, soil-property, and other auxiliary variables in Google Earth Engine. Local tile-specific random forest models are used to account for spatial nonstationarity in predictor-response relationships, and tile-level predictions are mosaicked into continuous regional outputs.
+This project develops a local modeling framework to predict GEDI-derived forest structural metrics at 30-m resolution across temperate broadleaf and mixed forests of eastern North America. The workflow integrates GEDI Level 2A and Level 2B observations with optical, radar, topographic, land-cover, leaf-trait, and soil-property variables in Google Earth Engine. Local tile-specific random forest models are used to account for spatial nonstationarity in predictor–response relationships, and tile-level predictions are mosaicked into continuous regional outputs.
 
-The published study covers approximately 1.17 million km² of temperate broadleaf and mixed forests in eastern North America for 2019-2022. It predicts 11 GEDI-derived structural metrics, including canopy height, canopy cover, foliage height diversity, plant area index, relative height differences, and vertical plant area volume density metrics.
+The published study covers approximately 1.17 million km² of temperate broadleaf and mixed forests in eastern North America for 2019–2022. It predicts 11 GEDI-derived structural metrics, including canopy height, canopy cover, foliage height diversity, plant area index, relative height differences, and vertical plant area volume density metrics.
 
 ## Repository contents and workflow
 
