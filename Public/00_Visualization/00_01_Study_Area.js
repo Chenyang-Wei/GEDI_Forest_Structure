@@ -1,10 +1,8 @@
 /*******************************************************************************
  * Introduction *
  * 
- *  1) Visualize datasets.
- * 
- *  2) Check the U.S. states and Canadian provinces intersected with 
- *     the study domain.
+ *  1) Visualize datasets and check U.S. states and Canadian provinces
+ *     intersecting the study domain.
  * 
  * Last updated: 11/5/2024
  * 
